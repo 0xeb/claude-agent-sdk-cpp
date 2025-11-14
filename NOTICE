@@ -1,0 +1,30 @@
+================================================================================
+claude-agent-sdk-cpp - C++ Port of Claude Agent SDK
+================================================================================
+
+Copyright 2025 Elias Bachaalany
+
+This software is a C++ port of the claude-agent-sdk-python library.
+
+Original Work:
+  claude-agent-sdk-python - Python SDK for Claude Agent
+  Copyright (c) 2025 Anthropic, PBC
+  Repository: https://github.com/anthropics/claude-agent-sdk-python
+  License: MIT License
+
+C++ Port:
+  Author: Elias Bachaalany
+  Repository: https://github.com/0xeb/claude-agent-sdk-cpp
+
+Attribution Requirement:
+  When using claude-agent-sdk-cpp, please include the following attribution:
+  "Uses claude-agent-sdk-cpp (https://github.com/0xeb/claude-agent-sdk-cpp) by Elias Bachaalany"
+
+This C++ port is a complete reimplementation providing:
+  - Native C++ performance
+  - Header-only core components
+  - Modern C++17/20 features
+  - Cross-platform support (Windows, Linux, macOS)
+  - Additional features: Session storage, template-based MCP API
+
+================================================================================

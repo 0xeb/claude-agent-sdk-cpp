@@ -1,0 +1,16 @@
+{
+  "name": "claude-sdk",
+  "version": "0.1.0",
+  "description": "C++ SDK for Claude Code CLI",
+  "dependencies": [
+    {
+      "name": "nlohmann-json",
+      "version>=": "3.11.2"
+    },
+    {
+      "name": "gtest",
+      "version>=": "1.14.0"
+    }
+  ],
+  "builtin-baseline": "0d9d4684352ba8de70bdf251c6fc9a3c464fa12b"
+}
