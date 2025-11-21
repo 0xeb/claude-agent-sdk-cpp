@@ -272,7 +272,7 @@ Configuration options for Claude SDK.
 struct ClaudeOptions {
     // Model selection
     std::string model;
-    std::string fallback_model;  // Secondary model to use if primary model fails (v0.1.6+)
+    std::string fallback_model;  // Secondary model to use if primary model fails
 
     // System prompt
     std::string system_prompt;

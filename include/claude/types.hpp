@@ -237,8 +237,12 @@ struct HookMatcher
     /// List of callback functions to invoke when hook matches
     std::vector<HookCallback> hooks;
 
+    /// Timeout in seconds for hook execution (default: 60)
+    std::optional<int> timeout;
+
     HookMatcher() = default;
-    HookMatcher(std::optional<std::string> m, std::vector<HookCallback> h) : matcher(std::move(m)), hooks(std::move(h)) {}
+    HookMatcher(std::optional<std::string> m, std::vector<HookCallback> h, std::optional<int> t = std::nullopt)
+        : matcher(std::move(m)), hooks(std::move(h)), timeout(t) {}
 };
 
 // Content block types
@@ -274,6 +278,17 @@ struct ToolResultBlock
 // Content block variant
 using ContentBlock = std::variant<TextBlock, ThinkingBlock, ToolUseBlock, ToolResultBlock>;
 
+// Assistant message error types
+enum class AssistantMessageError
+{
+    AuthenticationFailed,
+    BillingError,
+    RateLimit,
+    InvalidRequest,
+    ServerError,
+    Unknown
+};
+
 // Message types
 struct UserMessage
 {
@@ -289,6 +304,7 @@ struct AssistantMessage
     std::string role = "assistant";
     std::vector<ContentBlock> content;
     std::string model; // Model used for this assistant message (e.g., "claude-sonnet-4-5")
+    std::optional<AssistantMessageError> error; // Error type if message contains an error
     json raw_json; // Original JSON from CLI (optional, for debugging)
 };
 
@@ -329,6 +345,7 @@ struct ResultMessage
     int duration_ms = 0;
     int duration_api_ms = 0;
     int num_turns = 0;
+    std::optional<json> structured_output;  // Structured output from JSON schema
     json raw_json; // Original JSON from CLI (optional, for debugging)
 
     // Convenience accessors (allows both nested and flat access)
@@ -381,7 +398,7 @@ using Message = std::variant<UserMessage, AssistantMessage, SystemMessage, Resul
 struct ClaudeOptions
 {
     std::string model;
-    std::string fallback_model;  // Secondary model to use if primary model fails or is unavailable (v0.1.6+)
+    std::string fallback_model;  // Secondary model to use if primary model fails or is unavailable
     std::string system_prompt;
     std::string system_prompt_append;  // Append to default claude_code preset (mutually exclusive with system_prompt)
     std::vector<std::string> allowed_tools;
@@ -395,7 +412,7 @@ struct ClaudeOptions
     // If empty, SDK searches PATH as usual.
     std::string cli_path;
 
-    // Plugin configurations (v0.1.5+)
+    // Plugin configurations
     // List of plugins to load. Each plugin is passed to CLI via --plugin-dir flag.
     std::vector<SdkPluginConfig> plugins;
 
@@ -409,6 +426,7 @@ struct ClaudeOptions
     bool continue_conversation = false;       // Continue previous conversation
     bool fork_session = false;               // Fork the session
     std::optional<int> max_thinking_tokens;  // v0.1.6: limit thinking tokens
+    std::optional<json> output_format;       // v0.1.8: Structured output format (JSON schema)
 
     // Control protocol hooks and callbacks
     /// Hook configurations organized by event type

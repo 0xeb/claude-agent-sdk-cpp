@@ -15,7 +15,7 @@ namespace claude
 namespace transport
 {
 
-// Platform-specific command line length limits (v0.1.4+)
+// Platform-specific command line length limits
 // Windows cmd.exe has a limit of 8191 characters, use 8000 for safety
 // Other platforms have much higher limits
 #ifdef _WIN32
@@ -58,7 +58,7 @@ void SubprocessCLITransport::connect()
 
     auto args = build_command();
 
-    // Windows command line optimization (v0.1.4+)
+    // Windows command line optimization
     // Check if command line is too long and optimize if needed
     if (!options_.agents.empty())
     {
@@ -264,7 +264,7 @@ std::vector<std::string> SubprocessCLITransport::build_command()
         cmd.push_back(options_.model);
     }
 
-    // Fallback model (v0.1.6+)
+    // Fallback model
     if (!options_.fallback_model.empty())
     {
         cmd.push_back("--fallback-model");
@@ -376,7 +376,7 @@ std::vector<std::string> SubprocessCLITransport::build_command()
         cmd.push_back(agents_json.dump());
     }
 
-    // Plugins (v0.1.5+)
+    // Plugins
     // Add --plugin-dir for each plugin (only "local" type supported currently)
     for (const auto& plugin : options_.plugins)
     {
@@ -445,6 +445,7 @@ std::string SubprocessCLITransport::find_cli(const std::optional<std::string>& h
     {
         locations.push_back(std::filesystem::path(home) / ".npm-global" / "bin" / "claude");
         locations.push_back(std::filesystem::path(home) / ".local" / "bin" / "claude");
+        locations.push_back(std::filesystem::path(home) / ".claude" / "local" / "claude");  // v0.1.8
     }
     locations.push_back("/usr/local/bin/claude");
 #endif
@@ -580,7 +581,7 @@ void SubprocessCLITransport::write_message(const std::string& json)
 
 void SubprocessCLITransport::close()
 {
-    // Clean up temporary files first (v0.1.4+)
+    // Clean up temporary files first
     for (const auto& temp_file : temp_files_)
     {
         try

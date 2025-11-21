@@ -88,7 +88,7 @@ class SubprocessTransport : public Transport
     std::thread stderr_reader_thread_;
     std::atomic<bool> stderr_running_{false};
 
-    // Temporary files for command line optimization (v0.1.4+)
+    // Temporary files for command line optimization
     // Tracks temp files created for --agents JSON when command line is too long
     std::vector<std::string> temp_files_;
 };

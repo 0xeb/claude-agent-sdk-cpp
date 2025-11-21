@@ -26,7 +26,7 @@ constexpr size_t DEFAULT_MAX_BUFFER_SIZE = 1024 * 1024;
 // Minimum required Claude Code CLI version
 constexpr const char* MINIMUM_CLAUDE_CODE_VERSION = "2.0.0";
 
-// Platform-specific command line length limits (v0.1.4+)
+// Platform-specific command line length limits
 // Windows cmd.exe has a limit of 8191 characters, use 8000 for safety
 // Other platforms have much higher limits
 #ifdef _WIN32
@@ -70,7 +70,7 @@ void SubprocessTransport::connect()
     // Build command arguments
     auto args = build_command();
 
-    // Windows command line optimization (v0.1.4+)
+    // Windows command line optimization
     // Check if command line is too long and optimize if needed
     if (!options_.agents.empty())
     {
@@ -213,7 +213,7 @@ void SubprocessTransport::close()
 {
     ready_ = false;
 
-    // Clean up temporary files first (v0.1.4+)
+    // Clean up temporary files first
     for (const auto& temp_file : temp_files_)
     {
         try
@@ -379,7 +379,7 @@ std::vector<std::string> SubprocessTransport::build_command() const
         args.push_back(options_.model);
     }
 
-    // Fallback model (v0.1.6+)
+    // Fallback model
     if (!options_.fallback_model.empty())
     {
         args.push_back("--fallback-model");
@@ -497,7 +497,7 @@ std::vector<std::string> SubprocessTransport::build_command() const
         args.push_back(agents_json.dump());
     }
 
-    // Plugins (v0.1.5+)
+    // Plugins
     // Add --plugin-dir for each plugin (only "local" type supported currently)
     for (const auto& plugin : options_.plugins)
     {
@@ -530,6 +530,20 @@ std::vector<std::string> SubprocessTransport::build_command() const
     {
         args.push_back("--max-thinking-tokens");
         args.push_back(std::to_string(*options_.max_thinking_tokens));
+    }
+
+    // v0.1.8: Output format / JSON schema
+    if (options_.output_format.has_value())
+    {
+        const json& format = *options_.output_format;
+        if (format.is_object() && format.contains("type") && format["type"] == "json_schema")
+        {
+            if (format.contains("schema"))
+            {
+                args.push_back("--json-schema");
+                args.push_back(format["schema"].dump());
+            }
+        }
     }
 
     // For one-shot mode, add --print and the prompt
@@ -574,6 +588,17 @@ std::string SubprocessTransport::find_cli() const
     if (auto result = subprocess::find_executable("claude"))
     {
         return *result;
+    }
+
+    // Check local installation
+    if (const char* home = std::getenv("HOME"))
+    {
+        namespace fs = std::filesystem;
+        fs::path local_cli = fs::path(home) / ".claude" / "local" / "claude";
+        if (fs::exists(local_cli))
+        {
+            return local_cli.string();
+        }
     }
 
     throw CLINotFoundError("Could not find 'claude' executable in PATH. "

@@ -284,6 +284,12 @@ class ClaudeClient::Impl
                         matcher_entry["matcher"] = nullptr;
                     }
 
+                    // Add timeout if specified
+                    if (matcher.timeout.has_value())
+                    {
+                        matcher_entry["timeout"] = *matcher.timeout;
+                    }
+
                     matchers_array.push_back(matcher_entry);
                 }
 

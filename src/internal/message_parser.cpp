@@ -191,6 +191,24 @@ AssistantMessage MessageParser::parse_assistant_message(const claude::json& j)
         msg.model = message["model"].get<std::string>();
     }
 
+    // Extract error field if present
+    if (message.contains("error") && message["error"].is_string())
+    {
+        std::string error_str = message["error"].get<std::string>();
+        if (error_str == "authentication_failed")
+            msg.error = AssistantMessageError::AuthenticationFailed;
+        else if (error_str == "billing_error")
+            msg.error = AssistantMessageError::BillingError;
+        else if (error_str == "rate_limit")
+            msg.error = AssistantMessageError::RateLimit;
+        else if (error_str == "invalid_request")
+            msg.error = AssistantMessageError::InvalidRequest;
+        else if (error_str == "server_error")
+            msg.error = AssistantMessageError::ServerError;
+        else
+            msg.error = AssistantMessageError::Unknown;
+    }
+
     return msg;
 }
 
@@ -262,6 +280,12 @@ ResultMessage MessageParser::parse_result_message(const claude::json& j)
     if (j.contains("num_turns"))
     {
         msg.num_turns = j.value("num_turns", 0);
+    }
+
+    // Structured output if present
+    if (j.contains("structured_output") && !j["structured_output"].is_null())
+    {
+        msg.structured_output = j["structured_output"];
     }
 
     // Result subtype if present

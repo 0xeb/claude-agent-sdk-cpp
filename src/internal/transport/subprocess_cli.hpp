@@ -58,7 +58,7 @@ class SubprocessCLITransport
     std::unique_ptr<std::thread> stderr_thread_;
     std::atomic<bool> stderr_stop_flag_{false};
 
-    // Temporary files for command line optimization (v0.1.4+)
+    // Temporary files for command line optimization
     std::vector<std::string> temp_files_;
 
     // Build command line arguments
