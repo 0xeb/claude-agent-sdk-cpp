@@ -44,23 +44,19 @@ std::string ControlProtocol::generate_request_id()
     std::ostringstream oss;
     oss << "req_" << counter << "_";
     for (int i = 0; i < 4; ++i)
-    {
         oss << std::hex << std::setfill('0') << std::setw(2) << dis(gen);
-    }
 
     return oss.str();
 }
 
-std::string ControlProtocol::build_request_message(const std::string& subtype,
-                                                   const json& data)
+std::string ControlProtocol::build_request_message(const std::string& subtype, const json& data)
 {
     std::string request_id = generate_request_id();
 
     json request = data;
     request["subtype"] = subtype;
 
-    json msg = {
-        {"type", "control_request"}, {"request_id", request_id}, {"request", request}};
+    json msg = {{"type", "control_request"}, {"request_id", request_id}, {"request", request}};
 
     return msg.dump() + "\n";
 }
@@ -77,10 +73,9 @@ std::future<json> ControlProtocol::register_request(const std::string& request_i
     return future;
 }
 
-json
-ControlProtocol::send_request(const std::function<void(const std::string&)>& write_func,
-                              const std::string& subtype, const json& request_data,
-                              int timeout_ms)
+json ControlProtocol::send_request(const std::function<void(const std::string&)>& write_func,
+                                   const std::string& subtype, const json& request_data,
+                                   int timeout_ms)
 {
     std::string request_id = generate_request_id();
 
@@ -88,8 +83,7 @@ ControlProtocol::send_request(const std::function<void(const std::string&)>& wri
     json request = request_data;
     request["subtype"] = subtype;
 
-    json msg = {
-        {"type", "control_request"}, {"request_id", request_id}, {"request", request}};
+    json msg = {{"type", "control_request"}, {"request_id", request_id}, {"request", request}};
 
     // Register pending request BEFORE sending
     auto future = register_request(request_id);

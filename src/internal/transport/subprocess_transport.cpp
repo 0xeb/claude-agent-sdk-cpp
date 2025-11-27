@@ -1,15 +1,15 @@
 #include "subprocess_transport.hpp"
 
+#include <chrono>
 #include <claude/errors.hpp>
 #include <claude/version.hpp>
-#include <nlohmann/json.hpp>
-#include <iostream>
-#include <regex>
-#include <filesystem>
 #include <cstdlib>
-#include <chrono>
-#include <sstream>
+#include <filesystem>
 #include <fstream>
+#include <iostream>
+#include <nlohmann/json.hpp>
+#include <regex>
+#include <sstream>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -57,9 +57,7 @@ SubprocessTransport::~SubprocessTransport()
 void SubprocessTransport::connect()
 {
     if (process_ && process_->is_running())
-    {
         return; // Already connected
-    }
 
     // Find CLI executable (use explicit override if provided)
     std::string cli_path = find_cli();
@@ -77,9 +75,7 @@ void SubprocessTransport::connect()
         // Calculate estimated command line length
         size_t cmd_length = cli_path.length();
         for (const auto& arg : args)
-        {
             cmd_length += 1 + arg.length(); // +1 for space
-        }
 
         // If command line exceeds limit, use temp file for --agents JSON
         if (cmd_length > CMD_LENGTH_LIMIT)
@@ -96,14 +92,17 @@ void SubprocessTransport::connect()
                     // Create temporary file
                     namespace fs = std::filesystem;
                     fs::path temp_dir = fs::temp_directory_path();
-                    fs::path temp_file = temp_dir / ("claude_agents_" + std::to_string(std::chrono::system_clock::now().time_since_epoch().count()) + ".json");
+                    fs::path temp_file =
+                        temp_dir /
+                        ("claude_agents_" +
+                         std::to_string(
+                             std::chrono::system_clock::now().time_since_epoch().count()) +
+                         ".json");
 
                     // Write agents JSON to file
                     std::ofstream ofs(temp_file);
                     if (!ofs)
-                    {
                         throw std::runtime_error("Failed to create temp file for --agents");
-                    }
                     ofs << agents_json_value;
                     ofs.close();
 
@@ -113,15 +112,16 @@ void SubprocessTransport::connect()
                     // Replace agents JSON with @filepath reference
                     args[agents_idx + 1] = "@" + temp_file.string();
 
-                    std::cerr << "Command line length (" << cmd_length
-                              << ") exceeds limit (" << CMD_LENGTH_LIMIT << "). "
+                    std::cerr << "Command line length (" << cmd_length << ") exceeds limit ("
+                              << CMD_LENGTH_LIMIT << "). "
                               << "Using temp file for --agents: " << temp_file << std::endl;
                 }
                 catch (const std::exception& e)
                 {
-                    std::cerr << "Warning: Failed to optimize command line length: "
-                              << e.what() << std::endl;
-                    // Continue with original args (may fail on Windows with very long command lines)
+                    std::cerr << "Warning: Failed to optimize command line length: " << e.what()
+                              << std::endl;
+                    // Continue with original args (may fail on Windows with very long command
+                    // lines)
                 }
             }
         }
@@ -135,9 +135,7 @@ void SubprocessTransport::connect()
     proc_opts.redirect_stderr = options_.stderr_callback.has_value();
 
     if (options_.working_directory)
-    {
         proc_opts.working_directory = *options_.working_directory;
-    }
 
     // Merge environment variables
     proc_opts.environment = options_.environment;
@@ -151,18 +149,14 @@ void SubprocessTransport::connect()
     // For one-shot queries (--print mode), close stdin immediately
     // The prompt is on command line, no need to keep stdin open
     if (!streaming_mode_ && !one_shot_prompt_.empty())
-    {
         process_->stdin_pipe().close();
-    }
 
     // Start background reader threads
     start_reader();
 
     // Start stderr reader if callback is configured
     if (options_.stderr_callback.has_value())
-    {
         start_stderr_reader();
-    }
 
     ready_ = true;
 }
@@ -170,14 +164,10 @@ void SubprocessTransport::connect()
 void SubprocessTransport::write(const std::string& data)
 {
     if (!is_ready())
-    {
         throw CLIConnectionError("Transport is not ready for writing");
-    }
 
     if (!process_ || !process_->is_running())
-    {
         throw CLIConnectionError("Cannot write to terminated process");
-    }
 
     process_->stdin_pipe().write(data);
     process_->stdin_pipe().flush();
@@ -223,7 +213,8 @@ void SubprocessTransport::close()
         catch (const std::exception& e)
         {
             // Ignore errors during cleanup
-            std::cerr << "Warning: Failed to remove temp file " << temp_file << ": " << e.what() << std::endl;
+            std::cerr << "Warning: Failed to remove temp file " << temp_file << ": " << e.what()
+                      << std::endl;
         }
     }
     temp_files_.clear();
@@ -236,9 +227,7 @@ void SubprocessTransport::close()
     if (process_)
     {
         if (process_->stdin_pipe().is_open())
-        {
             process_->stdin_pipe().close();
-        }
 
         // Wait for process to exit
         auto exit_code = process_->try_wait();
@@ -273,17 +262,13 @@ bool SubprocessTransport::is_ready() const
 void SubprocessTransport::end_input()
 {
     if (process_ && process_->stdin_pipe().is_open())
-    {
         process_->stdin_pipe().close();
-    }
 }
 
 long SubprocessTransport::get_pid() const
 {
     if (process_)
-    {
         return static_cast<long>(process_->pid());
-    }
     return 0;
 }
 
@@ -327,7 +312,7 @@ std::vector<std::string> SubprocessTransport::build_command() const
     else
     {
         args.push_back("--system-prompt");
-        args.push_back("");  // Empty string required by CLI
+        args.push_back(""); // Empty string required by CLI
     }
 
     // Allowed tools
@@ -389,9 +374,7 @@ std::vector<std::string> SubprocessTransport::build_command() const
     // Permission prompt tool
     std::string permission_tool_name = options_.permission_prompt_tool_name;
     if (options_.tool_permission_callback.has_value() && permission_tool_name.empty())
-    {
         permission_tool_name = "stdio";
-    }
 
     if (!permission_tool_name.empty())
     {
@@ -408,9 +391,7 @@ std::vector<std::string> SubprocessTransport::build_command() const
 
     // Continue conversation
     if (options_.continue_conversation)
-    {
         args.push_back("--continue");
-    }
 
     // Resume session
     if (!options_.resume.empty())
@@ -442,15 +423,11 @@ std::vector<std::string> SubprocessTransport::build_command() const
 
     // Partial messages
     if (options_.include_partial_messages)
-    {
         args.push_back("--include-partial-messages");
-    }
 
     // Fork session
     if (options_.fork_session)
-    {
         args.push_back("--fork-session");
-    }
 
     // Setting sources (always pass, CLI requires it for proper parsing)
     std::string sources_str;
@@ -465,7 +442,7 @@ std::vector<std::string> SubprocessTransport::build_command() const
     }
     // else: sources_str remains empty string
     args.push_back("--setting-sources");
-    args.push_back(sources_str);  // May be empty string, which CLI expects
+    args.push_back(sources_str); // May be empty string, which CLI expects
 
     // Note: Working directory is set via ProcessOptions.working_directory,
     // not via a CLI flag (the --working-directory flag is not supported)
@@ -482,13 +459,9 @@ std::vector<std::string> SubprocessTransport::build_command() const
             agent_obj["prompt"] = agent_def.prompt;
 
             if (agent_def.tools.has_value())
-            {
                 agent_obj["tools"] = *agent_def.tools;
-            }
             if (agent_def.model.has_value())
-            {
                 agent_obj["model"] = *agent_def.model;
-            }
 
             agents_json[name] = agent_obj;
         }
@@ -513,16 +486,12 @@ std::vector<std::string> SubprocessTransport::build_command() const
     {
         std::string full_flag = flag;
         if (full_flag.substr(0, 2) != "--" && !full_flag.empty())
-        {
             full_flag = "--" + full_flag;
-        }
 
         args.push_back(full_flag);
 
         if (!value.empty())
-        {
             args.push_back(value);
-        }
     }
 
     // v0.1.6: Max thinking tokens
@@ -566,9 +535,7 @@ std::string SubprocessTransport::find_cli() const
         namespace fs = std::filesystem;
         fs::path p(options_.cli_path);
         if (fs::exists(p))
-        {
             return options_.cli_path;
-        }
         // Path does not exist
         throw CLINotFoundError(std::string("Claude Code not found at: ") + options_.cli_path);
     }
@@ -579,16 +546,12 @@ std::string SubprocessTransport::find_cli() const
         namespace fs = std::filesystem;
         fs::path p(env_cli);
         if (fs::exists(p))
-        {
             return std::string(env_cli);
-        }
     }
 
     // Fallback: search PATH for 'claude'
     if (auto result = subprocess::find_executable("claude"))
-    {
         return *result;
-    }
 
     // Check local installation
     if (const char* home = std::getenv("HOME"))
@@ -596,9 +559,7 @@ std::string SubprocessTransport::find_cli() const
         namespace fs = std::filesystem;
         fs::path local_cli = fs::path(home) / ".claude" / "local" / "claude";
         if (fs::exists(local_cli))
-        {
             return local_cli.string();
-        }
     }
 
     throw CLINotFoundError("Could not find 'claude' executable in PATH. "
@@ -639,9 +600,7 @@ void SubprocessTransport::check_claude_version(const std::string& cli_path)
                 char buffer[256];
                 size_t n = version_process.stdout_pipe().read(buffer, sizeof(buffer));
                 if (n > 0)
-                {
                     output.append(buffer, n);
-                }
             }
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
@@ -662,24 +621,21 @@ void SubprocessTransport::check_claude_version(const std::string& cli_path)
             std::stringstream ss(version_str);
             std::string part;
             while (std::getline(ss, part, '.'))
-            {
                 version_parts.push_back(std::stoi(part));
-            }
 
             // Parse minimum version parts
             std::vector<int> min_parts;
             std::stringstream min_ss(MINIMUM_CLAUDE_CODE_VERSION);
             while (std::getline(min_ss, part, '.'))
-            {
                 min_parts.push_back(std::stoi(part));
-            }
 
             // Compare versions
             if (version_parts < min_parts)
             {
                 std::string warning = "Warning: Claude Code version " + version_str +
                                       " is unsupported in the Agent SDK. "
-                                      "Minimum required version is " + std::string(MINIMUM_CLAUDE_CODE_VERSION) +
+                                      "Minimum required version is " +
+                                      std::string(MINIMUM_CLAUDE_CODE_VERSION) +
                                       ". Some features may not work correctly.";
 
                 // Send warning via stderr callback if present, otherwise to stderr
@@ -715,18 +671,14 @@ void SubprocessTransport::reader_loop()
         {
             // Check if stdout has data with timeout
             if (!process_->stdout_pipe().has_data(100))
-            {
                 continue;
-            }
 
             // Read data from stdout
             char buffer[4096];
             size_t n = process_->stdout_pipe().read(buffer, sizeof(buffer));
 
             if (n == 0)
-            {
                 break; // EOF reached
-            }
 
             // Parse messages
             std::string data(buffer, n);
@@ -737,9 +689,7 @@ void SubprocessTransport::reader_loop()
             {
                 std::lock_guard<std::mutex> lock(queue_mutex_);
                 for (auto& msg : messages)
-                {
                     message_queue_.push(std::move(msg));
-                }
                 queue_cv_.notify_all();
             }
         }
@@ -769,9 +719,7 @@ void SubprocessTransport::stop_reader()
     {
         running_ = false;
         if (reader_thread_.joinable())
-        {
             reader_thread_.join();
-        }
     }
 }
 
@@ -784,30 +732,22 @@ void SubprocessTransport::stderr_reader_loop()
         {
             // Check if stderr has data with timeout
             if (!process_->stderr_pipe().has_data(100))
-            {
                 continue;
-            }
 
             // Read a line from stderr (returns empty string on EOF)
             std::string line = process_->stderr_pipe().read_line();
 
             // Empty line indicates EOF or error
             if (line.empty() && !process_->is_running())
-            {
                 break;
-            }
 
             // Remove trailing whitespace
             while (!line.empty() && (line.back() == '\r' || line.back() == '\n'))
-            {
                 line.pop_back();
-            }
 
             // Skip empty lines
             if (line.empty())
-            {
                 continue;
-            }
 
             // Invoke callback if still configured
             if (options_.stderr_callback.has_value())
@@ -841,9 +781,7 @@ void SubprocessTransport::stop_stderr_reader()
     {
         stderr_running_ = false;
         if (stderr_reader_thread_.joinable())
-        {
             stderr_reader_thread_.join();
-        }
     }
 }
 
@@ -855,7 +793,8 @@ std::unique_ptr<Transport> create_subprocess_transport(const ClaudeOptions& opti
     return std::make_unique<internal::SubprocessTransport>(options);
 }
 
-std::unique_ptr<Transport> create_oneshot_transport(const std::string& prompt, const ClaudeOptions& options)
+std::unique_ptr<Transport> create_oneshot_transport(const std::string& prompt,
+                                                    const ClaudeOptions& options)
 {
     return std::make_unique<internal::SubprocessTransport>(prompt, options);
 }

@@ -30,7 +30,8 @@ using namespace claude;
 //   ./test_claude --gtest_also_run_disabled_tests --gtest_filter="MultithreadingTest.*"
 // ============================================================================
 
-namespace {
+namespace
+{
 
 // Thread-safe result collector
 struct ThreadResult
@@ -60,10 +61,8 @@ class ThreadResultCollector
         std::lock_guard<std::mutex> lock(mutex_);
         int count = 0;
         for (const auto& result : results_)
-        {
             if (result.success)
                 ++count;
-        }
         return count;
     }
 
@@ -121,20 +120,14 @@ void worker_thread(int thread_id, ThreadResultCollector& collector)
                 const auto& assistant = std::get<AssistantMessage>(msg);
                 std::string text = get_text_content(assistant.content);
                 if (text.empty())
-                {
                     throw std::runtime_error("Empty assistant response");
-                }
             }
             if (is_result_message(msg))
-            {
                 found_result = true;
-            }
         }
 
         if (!found_assistant || !found_result)
-        {
             throw std::runtime_error("Incomplete response");
-        }
 
         client.disconnect();
 
@@ -161,16 +154,15 @@ TEST(MultithreadingTest, MultipleClientsSequential)
     ThreadResultCollector collector;
 
     for (int i = 0; i < num_clients; ++i)
-    {
         worker_thread(i, collector);
-    }
 
     EXPECT_EQ(collector.count_successful(), num_clients);
 
     auto results = collector.get_results();
     for (const auto& result : results)
     {
-        EXPECT_TRUE(result.success) << "Thread " << result.thread_id << " failed: " << result.error_message;
+        EXPECT_TRUE(result.success)
+            << "Thread " << result.thread_id << " failed: " << result.error_message;
     }
 }
 
@@ -184,15 +176,11 @@ TEST(MultithreadingTest, MultipleClientsParallel)
 
     // Launch threads
     for (int i = 0; i < num_threads; ++i)
-    {
         threads.emplace_back(worker_thread, i, std::ref(collector));
-    }
 
     // Wait for all threads to complete
     for (auto& thread : threads)
-    {
         thread.join();
-    }
 
     // Verify all threads succeeded
     EXPECT_EQ(collector.count_successful(), num_threads);
@@ -202,7 +190,8 @@ TEST(MultithreadingTest, MultipleClientsParallel)
 
     for (const auto& result : results)
     {
-        EXPECT_TRUE(result.success) << "Thread " << result.thread_id << " failed: " << result.error_message;
+        EXPECT_TRUE(result.success)
+            << "Thread " << result.thread_id << " failed: " << result.error_message;
     }
 }
 
@@ -217,7 +206,8 @@ TEST(MultithreadingTest, DISABLED_ConcurrentQueriesStressTest)
     std::atomic<int> active_clients{0};
     std::atomic<int> peak_clients{0};
 
-    auto stress_worker = [&](int thread_id) {
+    auto stress_worker = [&](int thread_id)
+    {
         try
         {
             ClaudeOptions opts;
@@ -249,9 +239,7 @@ TEST(MultithreadingTest, DISABLED_ConcurrentQueriesStressTest)
             }
 
             if (!found_response)
-            {
                 throw std::runtime_error("No response received");
-            }
 
             client.disconnect();
             --active_clients;
@@ -267,15 +255,11 @@ TEST(MultithreadingTest, DISABLED_ConcurrentQueriesStressTest)
 
     // Launch all threads at once
     for (int i = 0; i < num_threads; ++i)
-    {
         threads.emplace_back(stress_worker, i);
-    }
 
     // Wait for completion
     for (auto& thread : threads)
-    {
         thread.join();
-    }
 
     // Report results
     auto results = collector.get_results();
@@ -290,7 +274,8 @@ TEST(MultithreadingTest, DISABLED_ConcurrentQueriesStressTest)
     {
         if (!result.success)
         {
-            std::cerr << "Thread " << result.thread_id << " failed: " << result.error_message << std::endl;
+            std::cerr << "Thread " << result.thread_id << " failed: " << result.error_message
+                      << std::endl;
         }
     }
 }
@@ -301,44 +286,44 @@ TEST(MultithreadingTest, ClientLifetimeInThread)
     std::atomic<bool> test_passed{false};
     std::string error_message;
 
-    std::thread worker([&]() {
-        try
+    std::thread worker(
+        [&]()
         {
-            ClaudeOptions opts;
-            opts.permission_mode = "bypassPermissions";
-
-            // Create client in thread scope
-            ClaudeClient client(opts);
-            client.connect();
-
-            client.send_query("Say 'Hello'");
-            auto messages = client.receive_response();
-
-            bool found_message = false;
-            for (const auto& msg : messages)
+            try
             {
-                if (is_assistant_message(msg))
+                ClaudeOptions opts;
+                opts.permission_mode = "bypassPermissions";
+
+                // Create client in thread scope
+                ClaudeClient client(opts);
+                client.connect();
+
+                client.send_query("Say 'Hello'");
+                auto messages = client.receive_response();
+
+                bool found_message = false;
+                for (const auto& msg : messages)
                 {
-                    found_message = true;
-                    break;
+                    if (is_assistant_message(msg))
+                    {
+                        found_message = true;
+                        break;
+                    }
                 }
-            }
 
-            if (!found_message)
+                if (!found_message)
+                    throw std::runtime_error("No assistant message found");
+
+                client.disconnect();
+                test_passed = true;
+
+                // Client destructor will be called here
+            }
+            catch (const std::exception& e)
             {
-                throw std::runtime_error("No assistant message found");
+                error_message = e.what();
             }
-
-            client.disconnect();
-            test_passed = true;
-
-            // Client destructor will be called here
-        }
-        catch (const std::exception& e)
-        {
-            error_message = e.what();
-        }
-    });
+        });
 
     worker.join();
 

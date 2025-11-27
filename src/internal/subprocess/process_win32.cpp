@@ -21,9 +21,7 @@ struct PipeHandle
     ~PipeHandle()
     {
         if (handle != INVALID_HANDLE_VALUE)
-        {
             CloseHandle(handle);
-        }
     }
 };
 
@@ -38,13 +36,9 @@ struct ProcessHandle
     ~ProcessHandle()
     {
         if (thread_handle != INVALID_HANDLE_VALUE)
-        {
             CloseHandle(thread_handle);
-        }
         if (process_handle != INVALID_HANDLE_VALUE)
-        {
             CloseHandle(process_handle);
-        }
     }
 };
 
@@ -73,27 +67,17 @@ static std::string quote_if_needed(const std::string& arg)
         arg.empty() || arg.find(' ') != std::string::npos || arg.find('\t') != std::string::npos;
 
     if (!needs_quotes)
-    {
         return arg;
-    }
 
     // Quote and escape
     std::string result = "\"";
     for (char c : arg)
-    {
         if (c == '"')
-        {
             result += "\\\"";
-        }
         else if (c == '\\')
-        {
             result += "\\\\";
-        }
         else
-        {
             result += c;
-        }
-    }
     result += "\"";
     return result;
 }
@@ -112,9 +96,7 @@ ReadPipe& ReadPipe::operator=(ReadPipe&& other) noexcept = default;
 size_t ReadPipe::read(char* buffer, size_t size)
 {
     if (!is_open())
-    {
         throw std::runtime_error("Pipe is not open");
-    }
 
     DWORD bytes_read = 0;
     BOOL success =
@@ -124,9 +106,7 @@ size_t ReadPipe::read(char* buffer, size_t size)
     {
         DWORD error = GetLastError();
         if (error == ERROR_BROKEN_PIPE)
-        {
             return 0; // EOF
-        }
         throw std::runtime_error("Read failed: " + get_last_error_message());
     }
 
@@ -194,18 +174,14 @@ WritePipe& WritePipe::operator=(WritePipe&& other) noexcept = default;
 size_t WritePipe::write(const char* data, size_t size)
 {
     if (!is_open())
-    {
         throw std::runtime_error("Pipe is not open");
-    }
 
     DWORD bytes_written = 0;
     BOOL success =
         WriteFile(handle_->handle, data, static_cast<DWORD>(size), &bytes_written, nullptr);
 
     if (!success)
-    {
         throw std::runtime_error("Write failed: " + get_last_error_message());
-    }
 
     return bytes_written;
 }
@@ -218,9 +194,7 @@ size_t WritePipe::write(const std::string& data)
 void WritePipe::flush()
 {
     if (is_open())
-    {
         FlushFileBuffers(handle_->handle);
-    }
 }
 
 void WritePipe::close()
@@ -267,9 +241,7 @@ void Process::spawn(const std::string& executable, const std::vector<std::string
     if (options.redirect_stdin)
     {
         if (!CreatePipe(&stdin_read, &stdin_write, &sa, 0))
-        {
             throw std::runtime_error("Failed to create stdin pipe: " + get_last_error_message());
-        }
         // Ensure write handle is not inherited
         SetHandleInformation(stdin_write, HANDLE_FLAG_INHERIT, 0);
 
@@ -283,9 +255,7 @@ void Process::spawn(const std::string& executable, const std::vector<std::string
     if (options.redirect_stdout)
     {
         if (!CreatePipe(&stdout_read, &stdout_write, &sa, 0))
-        {
             throw std::runtime_error("Failed to create stdout pipe: " + get_last_error_message());
-        }
         // Ensure read handle is not inherited
         SetHandleInformation(stdout_read, HANDLE_FLAG_INHERIT, 0);
 
@@ -299,9 +269,7 @@ void Process::spawn(const std::string& executable, const std::vector<std::string
     if (options.redirect_stderr)
     {
         if (!CreatePipe(&stderr_read, &stderr_write, &sa, 0))
-        {
             throw std::runtime_error("Failed to create stderr pipe: " + get_last_error_message());
-        }
         // Ensure read handle is not inherited
         SetHandleInformation(stderr_read, HANDLE_FLAG_INHERIT, 0);
 
@@ -316,9 +284,7 @@ void Process::spawn(const std::string& executable, const std::vector<std::string
     cmdline << quote_if_needed(executable);
 
     for (const auto& arg : args)
-    {
         cmdline << " " << quote_if_needed(arg);
-    }
     std::string cmdline_str = cmdline.str();
 
     // Build environment block
@@ -350,15 +316,11 @@ void Process::spawn(const std::string& executable, const std::vector<std::string
 
             // Merge with custom environment (custom variables override)
             for (const auto& [key, value] : options.environment)
-            {
                 env_map[key] = value;
-            }
 
             // Build environment block from merged map
             for (const auto& [key, value] : env_map)
-            {
                 env_block += key + "=" + value + '\0';
-            }
             env_block += '\0';
         }
     }
@@ -398,9 +360,7 @@ void Process::spawn(const std::string& executable, const std::vector<std::string
         CloseHandle(stderr_write);
 
     if (!success)
-    {
         throw std::runtime_error("Failed to create process: " + get_last_error_message());
-    }
 
     // Store process information
     handle_->process_handle = pi.hProcess;
@@ -412,27 +372,21 @@ void Process::spawn(const std::string& executable, const std::vector<std::string
 WritePipe& Process::stdin_pipe()
 {
     if (!stdin_)
-    {
         throw std::runtime_error("stdin not redirected");
-    }
     return *stdin_;
 }
 
 ReadPipe& Process::stdout_pipe()
 {
     if (!stdout_)
-    {
         throw std::runtime_error("stdout not redirected");
-    }
     return *stdout_;
 }
 
 ReadPipe& Process::stderr_pipe()
 {
     if (!stderr_)
-    {
         throw std::runtime_error("stderr not redirected");
-    }
     return *stderr_;
 }
 
@@ -443,18 +397,14 @@ bool Process::is_running() const
 
     DWORD exit_code;
     if (GetExitCodeProcess(handle_->process_handle, &exit_code))
-    {
         return exit_code == STILL_ACTIVE;
-    }
     return false;
 }
 
 std::optional<int> Process::try_wait()
 {
     if (!handle_->running)
-    {
         return handle_->exit_code;
-    }
 
     DWORD result = WaitForSingleObject(handle_->process_handle, 0);
     if (result == WAIT_OBJECT_0)
@@ -474,21 +424,15 @@ std::optional<int> Process::try_wait()
 int Process::wait()
 {
     if (!handle_->running)
-    {
         return handle_->exit_code;
-    }
 
     WaitForSingleObject(handle_->process_handle, INFINITE);
 
     DWORD exit_code;
     if (GetExitCodeProcess(handle_->process_handle, &exit_code))
-    {
         handle_->exit_code = static_cast<int>(exit_code);
-    }
     else
-    {
         handle_->exit_code = -1;
-    }
 
     handle_->running = false;
     return handle_->exit_code;
@@ -497,9 +441,7 @@ int Process::wait()
 void Process::terminate()
 {
     if (handle_->running && handle_->process_handle != INVALID_HANDLE_VALUE)
-    {
         TerminateProcess(handle_->process_handle, 1);
-    }
 }
 
 void Process::kill()
@@ -520,9 +462,7 @@ std::optional<std::string> find_executable(const std::string& name)
     // If it's an absolute path and exists, return it
     fs::path exe_path(name);
     if (exe_path.is_absolute() && fs::exists(exe_path))
-    {
         return name;
-    }
 
     // Try with extensions on Windows - prefer .cmd/.bat over no extension
     // This is important for npm-installed tools which have both "claude" and "claude.cmd"
@@ -533,9 +473,7 @@ std::optional<std::string> find_executable(const std::string& name)
     {
         fs::path test_path = name + ext;
         if (fs::exists(test_path))
-        {
             return test_path.string();
-        }
     }
 
     // Get PATH environment variable
@@ -556,9 +494,7 @@ std::optional<std::string> find_executable(const std::string& name)
         {
             fs::path test_path = fs::path(dir) / (name + ext);
             if (fs::exists(test_path))
-            {
                 return test_path.string();
-            }
         }
 
         start = end + 1;
@@ -572,9 +508,7 @@ std::optional<std::string> find_executable(const std::string& name)
         {
             fs::path test_path = fs::path(dir) / (name + ext);
             if (fs::exists(test_path))
-            {
                 return test_path.string();
-            }
         }
     }
 

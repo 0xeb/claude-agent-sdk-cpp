@@ -26,15 +26,11 @@ static void run_query(const std::string& title, const std::string& prompt, Claud
                 // Cost fields are optional; print if non-zero
                 double total_cost = r.result.cost.total;
                 if (total_cost > 0.0)
-                {
                     std::cout << "Total cost: $" << total_cost << "\n";
-                }
             }
         }
         if (!text.empty())
-        {
             std::cout << "Claude: " << text << "\n";
-        }
         std::cout << "\n";
     }
     catch (const CLINotFoundError& e)
@@ -79,4 +75,3 @@ int main()
 
     return 0;
 }
-

@@ -35,8 +35,8 @@ struct ControlResponse
     {
         std::string subtype; // "success" or "error"
         std::string request_id;
-        json response; // Response data
-        std::string error;       // Error message if failed
+        json response;     // Response data
+        std::string error; // Error message if failed
     } response;
 };
 
@@ -54,8 +54,7 @@ class ControlProtocol
     // Send control request and wait for response
     // Returns response data on success, throws on error/timeout
     json send_request(const std::function<void(const std::string&)>& write_func,
-                                const std::string& subtype, const json& request_data,
-                                int timeout_ms = 60000);
+                      const std::string& subtype, const json& request_data, int timeout_ms = 60000);
 
     // Handle incoming control response
     void handle_response(const ControlResponse& response);

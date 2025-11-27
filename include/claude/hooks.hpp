@@ -40,14 +40,8 @@ constexpr const char* WRITE_AFTER = "write_after";
 /// Useful for registering all hooks at once
 inline std::vector<std::string> all_standard_hooks()
 {
-    return {
-        BASH_BEFORE_EXECUTE,
-        BASH_AFTER_EXECUTE,
-        EDIT_BEFORE,
-        EDIT_AFTER,
-        WRITE_BEFORE,
-        WRITE_AFTER
-    };
+    return {BASH_BEFORE_EXECUTE, BASH_AFTER_EXECUTE, EDIT_BEFORE,
+            EDIT_AFTER,          WRITE_BEFORE,       WRITE_AFTER};
 }
 
 } // namespace hooks

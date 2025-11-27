@@ -49,7 +49,8 @@ Message MessageParser::parse_message(const std::string& json_str)
         }
         else
         {
-            // Use MessageParseError for unknown message types - this is a parsing issue, not JSON decoding
+            // Use MessageParseError for unknown message types - this is a parsing issue, not JSON
+            // decoding
             throw MessageParseError("Unknown message type: " + type, j);
         }
     }
@@ -99,9 +100,7 @@ std::optional<std::string> MessageParser::extract_line()
 {
     size_t pos = buffer_.find('\n');
     if (pos == std::string::npos)
-    {
         return std::nullopt;
-    }
 
     std::string line = buffer_.substr(0, pos);
     buffer_.erase(0, pos + 1);
@@ -125,9 +124,7 @@ ContentBlock MessageParser::parse_content_block(const claude::json& j)
         block.thinking = j.at("thinking").get<std::string>();
         // Extract signature if present
         if (j.contains("signature"))
-        {
             block.signature = j.at("signature").get<std::string>();
-        }
         return block;
     }
     else if (type == "tool_use")
@@ -143,18 +140,12 @@ ContentBlock MessageParser::parse_content_block(const claude::json& j)
         ToolResultBlock block;
         block.tool_use_id = j.at("tool_use_id").get<std::string>();
         if (j.contains("is_error"))
-        {
             block.is_error = j.at("is_error").get<bool>();
-        }
         // Content can be: string, array of content blocks, or null
         if (j.contains("content"))
-        {
             block.content = j["content"]; // Store raw JSON
-        }
         else
-        {
             block.content = nullptr; // Explicit null if no content
-        }
         return block;
     }
     else
@@ -172,24 +163,16 @@ AssistantMessage MessageParser::parse_assistant_message(const claude::json& j)
     // The CLI wraps the actual message in a "message" field
     const claude::json* message_ptr = &j;
     if (j.contains("message"))
-    {
         message_ptr = &j["message"];
-    }
 
     const auto& message = *message_ptr;
     if (message.contains("content") && message["content"].is_array())
-    {
         for (const auto& content_json : message["content"])
-        {
             msg.content.push_back(parse_content_block(content_json));
-        }
-    }
 
     // Extract model field (present in assistant messages)
     if (message.contains("model") && message["model"].is_string())
-    {
         msg.model = message["model"].get<std::string>();
-    }
 
     // Extract error field if present
     if (message.contains("error") && message["error"].is_string())
@@ -220,18 +203,12 @@ UserMessage MessageParser::parse_user_message(const claude::json& j)
     // The CLI may wrap the actual message in a "message" field
     const claude::json* message_ptr = &j;
     if (j.contains("message"))
-    {
         message_ptr = &j["message"];
-    }
 
     const auto& message = *message_ptr;
     if (message.contains("content") && message["content"].is_array())
-    {
         for (const auto& content_json : message["content"])
-        {
             msg.content.push_back(parse_content_block(content_json));
-        }
-    }
 
     return msg;
 }
@@ -270,29 +247,19 @@ ResultMessage MessageParser::parse_result_message(const claude::json& j)
 
     // Additional telemetry fields
     if (j.contains("duration_ms"))
-    {
         msg.duration_ms = j.value("duration_ms", 0);
-    }
     if (j.contains("duration_api_ms"))
-    {
         msg.duration_api_ms = j.value("duration_api_ms", 0);
-    }
     if (j.contains("num_turns"))
-    {
         msg.num_turns = j.value("num_turns", 0);
-    }
 
     // Structured output if present
     if (j.contains("structured_output") && !j["structured_output"].is_null())
-    {
         msg.structured_output = j["structured_output"];
-    }
 
     // Result subtype if present
     if (j.contains("subtype") && j["subtype"].is_string())
-    {
         msg.subtype = j["subtype"].get<std::string>();
-    }
 
     return msg;
 }
@@ -322,9 +289,7 @@ SystemMessage MessageParser::parse_system_message(const claude::json& j)
     }
     // Set subtype if present
     if (j.contains("subtype") && j["subtype"].is_string())
-    {
         msg.subtype = j["subtype"].get<std::string>();
-    }
     return msg;
 }
 
@@ -349,23 +314,18 @@ StreamEvent MessageParser::parse_stream_event(const claude::json& j)
 
             // Optional identifiers within nested object (fallback if top-level missing)
             if (event.uuid.empty() && event_obj.contains("uuid") && event_obj["uuid"].is_string())
-            {
                 event.uuid = event_obj["uuid"].get<std::string>();
-            }
-            if (event.session_id.empty() && event_obj.contains("session_id") && event_obj["session_id"].is_string())
+            if (event.session_id.empty() && event_obj.contains("session_id") &&
+                event_obj["session_id"].is_string())
             {
                 event.session_id = event_obj["session_id"].get<std::string>();
             }
             if (!event.parent_tool_use_id.has_value() && event_obj.contains("parent_tool_use_id"))
             {
                 if (event_obj["parent_tool_use_id"].is_string())
-                {
                     event.parent_tool_use_id = event_obj["parent_tool_use_id"].get<std::string>();
-                }
                 else if (event_obj["parent_tool_use_id"].is_null())
-                {
                     event.parent_tool_use_id = std::nullopt;
-                }
             }
         }
         else if (j["event"].is_string())
@@ -382,18 +342,19 @@ StreamEvent MessageParser::parse_stream_event(const claude::json& j)
 
                 // Extract identifiers from data if present
                 if (event.uuid.empty() && data_obj.contains("uuid") && data_obj["uuid"].is_string())
-                {
                     event.uuid = data_obj["uuid"].get<std::string>();
-                }
-                if (event.session_id.empty() && data_obj.contains("session_id") && data_obj["session_id"].is_string())
+                if (event.session_id.empty() && data_obj.contains("session_id") &&
+                    data_obj["session_id"].is_string())
                 {
                     event.session_id = data_obj["session_id"].get<std::string>();
                 }
-                if (!event.parent_tool_use_id.has_value() && data_obj.contains("parent_tool_use_id"))
+                if (!event.parent_tool_use_id.has_value() &&
+                    data_obj.contains("parent_tool_use_id"))
                 {
                     if (data_obj["parent_tool_use_id"].is_string())
                     {
-                        event.parent_tool_use_id = data_obj["parent_tool_use_id"].get<std::string>();
+                        event.parent_tool_use_id =
+                            data_obj["parent_tool_use_id"].get<std::string>();
                     }
                     else if (data_obj["parent_tool_use_id"].is_null())
                     {
@@ -418,23 +379,15 @@ StreamEvent MessageParser::parse_stream_event(const claude::json& j)
 
     // Top-level identifiers when provided by CLI
     if (j.contains("uuid") && j["uuid"].is_string())
-    {
         event.uuid = j["uuid"].get<std::string>();
-    }
     if (j.contains("session_id") && j["session_id"].is_string())
-    {
         event.session_id = j["session_id"].get<std::string>();
-    }
     if (j.contains("parent_tool_use_id"))
     {
         if (j["parent_tool_use_id"].is_string())
-        {
             event.parent_tool_use_id = j["parent_tool_use_id"].get<std::string>();
-        }
         else if (j["parent_tool_use_id"].is_null())
-        {
             event.parent_tool_use_id = std::nullopt;
-        }
     }
 
     return event;
@@ -457,15 +410,11 @@ claude::protocol::ControlResponse MessageParser::parse_control_response(const cl
 
     // Response data is optional (might be null for error case)
     if (response.contains("response") && !response["response"].is_null())
-    {
         msg.response.response = response["response"];
-    }
 
     // Error message is optional (only present on error)
     if (response.contains("error") && !response["error"].is_null())
-    {
         msg.response.error = response["error"].get<std::string>();
-    }
 
     return msg;
 }

@@ -83,7 +83,10 @@ class Transport
      * Get the process ID for subprocess transports.
      * Returns 0 for non-subprocess transports.
      */
-    virtual long get_pid() const { return 0; }
+    virtual long get_pid() const
+    {
+        return 0;
+    }
 
     /**
      * Check if the transport is still running/connected.
@@ -93,7 +96,8 @@ class Transport
 
 // Factory functions for creating transports
 std::unique_ptr<Transport> create_subprocess_transport(const ClaudeOptions& options);
-std::unique_ptr<Transport> create_oneshot_transport(const std::string& prompt, const ClaudeOptions& options);
+std::unique_ptr<Transport> create_oneshot_transport(const std::string& prompt,
+                                                    const ClaudeOptions& options);
 
 } // namespace claude
 

@@ -15,15 +15,17 @@
 
 #pragma once
 
-#include <claude/types.hpp>
 #include <claude/client.hpp>
+#include <claude/types.hpp>
+#include <memory>
 #include <nlohmann/json.hpp>
 #include <string>
 #include <vector>
-#include <memory>
 
-namespace claude {
-namespace ext {
+namespace claude
+{
+namespace ext
+{
 
 /**
  * @brief Smart session wrapper with automatic message persistence
@@ -66,16 +68,14 @@ namespace ext {
  */
 class SessionWrapper
 {
-public:
+  public:
     /**
      * @brief Construct session wrapper with options
      * @param opts Claude client options
      * @param storage_dir Directory for session JSON files (default: .claude_sessions)
      */
-    explicit SessionWrapper(
-        const ClaudeOptions& opts,
-        const std::string& storage_dir = ".claude_sessions"
-    );
+    explicit SessionWrapper(const ClaudeOptions& opts,
+                            const std::string& storage_dir = ".claude_sessions");
 
     /**
      * @brief Destructor - saves session if connected
@@ -103,12 +103,18 @@ public:
      * session->interrupt();
      * @endcode
      */
-    ClaudeClient* operator->() { return &client_; }
+    ClaudeClient* operator->()
+    {
+        return &client_;
+    }
 
     /**
      * @brief Access underlying client (const)
      */
-    const ClaudeClient* operator->() const { return &client_; }
+    const ClaudeClient* operator->() const
+    {
+        return &client_;
+    }
 
     /**
      * @brief Dereference to client
@@ -119,12 +125,18 @@ public:
      * client.send_query("Hello");
      * @endcode
      */
-    ClaudeClient& operator*() { return client_; }
+    ClaudeClient& operator*()
+    {
+        return client_;
+    }
 
     /**
      * @brief Dereference to client (const)
      */
-    const ClaudeClient& operator*() const { return client_; }
+    const ClaudeClient& operator*() const
+    {
+        return client_;
+    }
 
     // ========================================================================
     // Connection Management
@@ -162,7 +174,7 @@ public:
      */
     class MessageIterator
     {
-    public:
+      public:
         using iterator_category = std::input_iterator_tag;
         using value_type = Message;
         using difference_type = std::ptrdiff_t;
@@ -191,7 +203,7 @@ public:
          */
         bool operator==(const MessageIterator& other) const;
 
-    private:
+      private:
         friend class SessionWrapper;
         friend struct MessageRange;
 
@@ -200,7 +212,7 @@ public:
 
         SessionWrapper* wrapper_;
         MessageStream::Iterator inner_;
-        mutable bool stored_;  // Track if current message was stored
+        mutable bool stored_; // Track if current message was stored
     };
 
     /**
@@ -209,18 +221,20 @@ public:
      * This object owns the MessageStream to ensure proper lifetime management.
      * Iterators returned by begin()/end() reference this stream safely.
      */
-    struct MessageRange {
+    struct MessageRange
+    {
         SessionWrapper* wrapper;
-        MessageStream stream;  // Owns the stream!
+        MessageStream stream; // Owns the stream!
 
-        MessageRange(SessionWrapper* w, MessageStream&& s)
-            : wrapper(w), stream(std::move(s)) {}
+        MessageRange(SessionWrapper* w, MessageStream&& s) : wrapper(w), stream(std::move(s)) {}
 
-        MessageIterator begin() {
+        MessageIterator begin()
+        {
             return MessageIterator(wrapper, stream.begin());
         }
 
-        MessageIterator end() {
+        MessageIterator end()
+        {
             return MessageIterator(wrapper, stream.end());
         }
     };
@@ -239,7 +253,8 @@ public:
      * }
      * @endcode
      */
-    MessageRange receive_messages() {
+    MessageRange receive_messages()
+    {
         return MessageRange(this, client_.receive_messages());
     }
 
@@ -312,20 +327,29 @@ public:
      * @brief Get current session ID
      * @return Session ID (empty if no session active)
      */
-    std::string session_id() const { return current_session_id_; }
+    std::string session_id() const
+    {
+        return current_session_id_;
+    }
 
     /**
      * @brief Get all stored messages
      * @return Reference to message vector
      */
-    const std::vector<Message>& messages() const { return messages_; }
+    const std::vector<Message>& messages() const
+    {
+        return messages_;
+    }
 
     /**
      * @brief Get storage directory
      */
-    std::string storage_directory() const { return storage_dir_; }
+    std::string storage_directory() const
+    {
+        return storage_dir_;
+    }
 
-private:
+  private:
     /**
      * @brief Store a message to the messages_ vector
      * @param msg Message to store
@@ -360,12 +384,12 @@ private:
     static std::string get_timestamp();
 
     // Member variables
-    ClaudeClient client_;           ///< Underlying Claude client
-    ClaudeOptions opts_;            ///< Client options (for resume)
-    std::string storage_dir_;       ///< Directory for JSON files
+    ClaudeClient client_;            ///< Underlying Claude client
+    ClaudeOptions opts_;             ///< Client options (for resume)
+    std::string storage_dir_;        ///< Directory for JSON files
     std::string current_session_id_; ///< Current session ID
-    std::vector<Message> messages_; ///< Message history (in-memory)
-    bool connected_;                ///< Connection state
+    std::vector<Message> messages_;  ///< Message history (in-memory)
+    bool connected_;                 ///< Connection state
 };
 
 } // namespace ext

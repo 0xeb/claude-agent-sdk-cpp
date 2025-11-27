@@ -1,12 +1,12 @@
 #ifndef CLAUDE_MCP_TYPE_TRAITS_HPP
 #define CLAUDE_MCP_TYPE_TRAITS_HPP
 
+#include <map>
 #include <nlohmann/json.hpp>
 #include <string>
 #include <tuple>
 #include <type_traits>
 #include <vector>
-#include <map>
 
 namespace claude
 {
@@ -55,7 +55,8 @@ struct TypeToSchema
         }
         else if constexpr (std::is_same_v<BaseType, int> || std::is_same_v<BaseType, long> ||
                            std::is_same_v<BaseType, int32_t> || std::is_same_v<BaseType, int64_t> ||
-                           std::is_same_v<BaseType, unsigned int> || std::is_same_v<BaseType, unsigned long> ||
+                           std::is_same_v<BaseType, unsigned int> ||
+                           std::is_same_v<BaseType, unsigned long> ||
                            std::is_same_v<BaseType, uint32_t> || std::is_same_v<BaseType, uint64_t>)
         {
             return json{{"type", "integer"}};
@@ -64,8 +65,10 @@ struct TypeToSchema
         {
             return json{{"type", "number"}};
         }
-        else if constexpr (std::is_same_v<BaseType, std::string> || std::is_same_v<BaseType, const char*> ||
-                           (std::is_array_v<BaseType> && std::is_same_v<std::remove_extent_t<BaseType>, char>))
+        else if constexpr (std::is_same_v<BaseType, std::string> ||
+                           std::is_same_v<BaseType, const char*> ||
+                           (std::is_array_v<BaseType> &&
+                            std::is_same_v<std::remove_extent_t<BaseType>, char>))
         {
             return json{{"type", "string"}};
         }
@@ -98,7 +101,7 @@ struct TypeToSchema
         }
     }
 
-private:
+  private:
     // Helper to detect std::vector<T>
     template <typename U>
     struct is_vector : std::false_type

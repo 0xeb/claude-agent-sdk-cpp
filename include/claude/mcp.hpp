@@ -52,10 +52,10 @@
  */
 
 // Core MCP components
-#include <claude/mcp/type_traits.hpp>
 #include <claude/mcp/argument_extractor.hpp>
-#include <claude/mcp/tool.hpp>
 #include <claude/mcp/server.hpp>
+#include <claude/mcp/tool.hpp>
+#include <claude/mcp/type_traits.hpp>
 
 namespace claude
 {

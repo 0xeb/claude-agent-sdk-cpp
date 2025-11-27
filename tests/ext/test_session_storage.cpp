@@ -4,18 +4,19 @@
  */
 
 #include <claude/ext/session_storage.hpp>
-#include <gtest/gtest.h>
 #include <filesystem>
 #include <fstream>
+#include <gtest/gtest.h>
 
 namespace fs = std::filesystem;
 
-namespace {
+namespace
+{
 
 // Test fixture
 class SessionWrapperTest : public ::testing::Test
 {
-protected:
+  protected:
     void SetUp() override
     {
         // Use unique test storage directory
@@ -23,18 +24,14 @@ protected:
 
         // Clean up any existing test directory
         if (fs::exists(test_storage_dir_))
-        {
             fs::remove_all(test_storage_dir_);
-        }
     }
 
     void TearDown() override
     {
         // Clean up test directory
         if (fs::exists(test_storage_dir_))
-        {
             fs::remove_all(test_storage_dir_);
-        }
     }
 
     std::string test_storage_dir_;
@@ -49,9 +46,7 @@ TEST_F(SessionWrapperTest, Construction)
     claude::ClaudeOptions opts;
     opts.permission_mode = "bypassPermissions";
 
-    EXPECT_NO_THROW({
-        claude::ext::SessionWrapper wrapper(opts, test_storage_dir_);
-    });
+    EXPECT_NO_THROW({ claude::ext::SessionWrapper wrapper(opts, test_storage_dir_); });
 }
 
 TEST_F(SessionWrapperTest, OperatorArrowAccess)
@@ -177,9 +172,7 @@ TEST_F(SessionWrapperTest, LoadHistoryNonExistentFile)
     claude::ClaudeOptions opts;
     claude::ext::SessionWrapper wrapper(opts, test_storage_dir_);
 
-    EXPECT_THROW({
-        wrapper.load_history("nonexistent_session");
-    }, std::runtime_error);
+    EXPECT_THROW({ wrapper.load_history("nonexistent_session"); }, std::runtime_error);
 }
 
 TEST_F(SessionWrapperTest, ListSessionsWithFiles)
@@ -188,11 +181,7 @@ TEST_F(SessionWrapperTest, ListSessionsWithFiles)
     claude::ext::SessionWrapper wrapper(opts, test_storage_dir_);
 
     // Create dummy session files
-    std::vector<std::string> session_ids = {
-        "session_001",
-        "session_002",
-        "session_003"
-    };
+    std::vector<std::string> session_ids = {"session_001", "session_002", "session_003"};
 
     for (const auto& id : session_ids)
     {
@@ -211,9 +200,7 @@ TEST_F(SessionWrapperTest, ListSessionsWithFiles)
 
     // Verify all session IDs are present
     for (const auto& id : session_ids)
-    {
         EXPECT_NE(std::find(sessions.begin(), sessions.end(), id), sessions.end());
-    }
 }
 
 // ============================================================================

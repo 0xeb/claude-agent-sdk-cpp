@@ -1,8 +1,8 @@
 #ifndef CLAUDE_TYPES_HPP
 #define CLAUDE_TYPES_HPP
 
-#include <map>
 #include <functional>
+#include <map>
 #include <nlohmann/json.hpp>
 #include <optional>
 #include <string>
@@ -29,34 +29,29 @@ using McpRequestHandler = std::function<json(const json&)>;
 /// Agent definition for custom agents
 struct AgentDefinition
 {
-    std::string description;                                    // Required
-    std::string prompt;                                         // Required
-    std::optional<std::vector<std::string>> tools = std::nullopt;      // Optional tools list
-    std::optional<std::string> model = std::nullopt;           // Optional: e.g., "claude-sonnet-4-5", "claude-opus-4", "claude-haiku-4", "inherit"
+    std::string description;                                      // Required
+    std::string prompt;                                           // Required
+    std::optional<std::vector<std::string>> tools = std::nullopt; // Optional tools list
+    std::optional<std::string> model = std::nullopt; // Optional: e.g., "claude-sonnet-4-5",
+                                                     // "claude-opus-4", "claude-haiku-4", "inherit"
 };
 
 /// Plugin configuration for Claude Code plugins (matches Python SDK v0.1.5)
 struct SdkPluginConfig
 {
-    std::string type;  // Currently only "local" is supported
-    std::string path;  // Path to plugin directory
+    std::string type; // Currently only "local" is supported
+    std::string path; // Path to plugin directory
 
     /// Convert to JSON format
     json to_json() const
     {
-        return json{
-            {"type", type},
-            {"path", path}
-        };
+        return json{{"type", type}, {"path", path}};
     }
 
     /// Create from JSON
     static SdkPluginConfig from_json(const json& j)
     {
-        return SdkPluginConfig{
-            j.at("type").get<std::string>(),
-            j.at("path").get<std::string>()
-        };
+        return SdkPluginConfig{j.at("type").get<std::string>(), j.at("path").get<std::string>()};
     }
 };
 
@@ -84,19 +79,20 @@ constexpr const char* Ask = "ask";
 /// Permission rule value
 struct PermissionRuleValue
 {
-    std::string tool_name;                                    // Required
-    std::optional<std::string> rule_content = std::nullopt;   // Optional
+    std::string tool_name;                                  // Required
+    std::optional<std::string> rule_content = std::nullopt; // Optional
 };
 
 /// Permission update configuration
 struct PermissionUpdate
 {
-    std::string type; // "addRules", "replaceRules", "removeRules", "setMode", "addDirectories", "removeDirectories"
+    std::string type; // "addRules", "replaceRules", "removeRules", "setMode", "addDirectories",
+                      // "removeDirectories"
     std::optional<std::vector<PermissionRuleValue>> rules = std::nullopt;
-    std::optional<std::string> behavior = std::nullopt;       // PermissionBehavior value
-    std::optional<std::string> mode = std::nullopt;           // PermissionMode value
+    std::optional<std::string> behavior = std::nullopt; // PermissionBehavior value
+    std::optional<std::string> mode = std::nullopt;     // PermissionMode value
     std::optional<std::vector<std::string>> directories = std::nullopt;
-    std::optional<std::string> destination = std::nullopt;    // PermissionUpdateDestination value
+    std::optional<std::string> destination = std::nullopt; // PermissionUpdateDestination value
 
     /// Convert to JSON format matching TypeScript control protocol
     json to_json() const
@@ -104,9 +100,7 @@ struct PermissionUpdate
         json result = {{"type", type}};
 
         if (destination.has_value())
-        {
             result["destination"] = *destination;
-        }
 
         // Handle different type variants
         if (type == "addRules" || type == "replaceRules" || type == "removeRules")
@@ -120,36 +114,26 @@ struct PermissionUpdate
 
                     // Safely handle optional rule_content (null if not present)
                     if (rule.rule_content.has_value())
-                    {
                         rule_obj["ruleContent"] = *rule.rule_content;
-                    }
                     else
-                    {
                         rule_obj["ruleContent"] = nullptr;
-                    }
 
                     rules_array.push_back(rule_obj);
                 }
                 result["rules"] = rules_array;
             }
             if (behavior.has_value())
-            {
                 result["behavior"] = *behavior;
-            }
         }
         else if (type == "setMode")
         {
             if (mode.has_value())
-            {
                 result["mode"] = *mode;
-            }
         }
         else if (type == "addDirectories" || type == "removeDirectories")
         {
             if (directories.has_value())
-            {
                 result["directories"] = *directories;
-            }
         }
 
         return result;
@@ -216,7 +200,8 @@ using HookCallback = std::function<json(const json& input, const std::string& to
 /// @param input Tool-specific arguments
 /// @param context Permission context with suggestions from CLI
 /// @return PermissionResult (allow with optional updates, or deny with optional message)
-using ToolPermissionCallback = std::function<PermissionResult(const std::string& tool_name, const json& input, const ToolPermissionContext& context)>;
+using ToolPermissionCallback = std::function<PermissionResult(
+    const std::string& tool_name, const json& input, const ToolPermissionContext& context)>;
 
 /// Callback invoked when the CLI process writes to stderr.
 /// Useful for debugging and observing CLI warnings/errors.
@@ -241,8 +226,11 @@ struct HookMatcher
     std::optional<double> timeout;
 
     HookMatcher() = default;
-    HookMatcher(std::optional<std::string> m, std::vector<HookCallback> h, std::optional<double> t = std::nullopt)
-        : matcher(std::move(m)), hooks(std::move(h)), timeout(t) {}
+    HookMatcher(std::optional<std::string> m, std::vector<HookCallback> h,
+                std::optional<double> t = std::nullopt)
+        : matcher(std::move(m)), hooks(std::move(h)), timeout(t)
+    {
+    }
 };
 
 // Content block types
@@ -305,7 +293,7 @@ struct AssistantMessage
     std::vector<ContentBlock> content;
     std::string model; // Model used for this assistant message (e.g., "claude-sonnet-4-5")
     std::optional<AssistantMessageError> error; // Error type if message contains an error
-    json raw_json; // Original JSON from CLI (optional, for debugging)
+    json raw_json;                              // Original JSON from CLI (optional, for debugging)
 };
 
 struct SystemMessage
@@ -345,18 +333,42 @@ struct ResultMessage
     int duration_ms = 0;
     int duration_api_ms = 0;
     int num_turns = 0;
-    std::optional<json> structured_output;  // Structured output from JSON schema
-    json raw_json; // Original JSON from CLI (optional, for debugging)
+    std::optional<json> structured_output; // Structured output from JSON schema
+    json raw_json;                         // Original JSON from CLI (optional, for debugging)
 
     // Convenience accessors (allows both nested and flat access)
-    const std::string& session_id() const { return result.session_id; }
-    const std::string& conversation_id() const { return result.conversation_id; }
-    double total_cost_usd() const { return result.cost.total; }
-    bool is_error() const { return subtype == "error"; }
-    const UsageInfo& usage() const { return result.usage; }
-    int duration_ms_value() const { return duration_ms; }
-    int duration_api_ms_value() const { return duration_api_ms; }
-    int num_turns_value() const { return num_turns; }
+    const std::string& session_id() const
+    {
+        return result.session_id;
+    }
+    const std::string& conversation_id() const
+    {
+        return result.conversation_id;
+    }
+    double total_cost_usd() const
+    {
+        return result.cost.total;
+    }
+    bool is_error() const
+    {
+        return subtype == "error";
+    }
+    const UsageInfo& usage() const
+    {
+        return result.usage;
+    }
+    int duration_ms_value() const
+    {
+        return duration_ms;
+    }
+    int duration_api_ms_value() const
+    {
+        return duration_api_ms;
+    }
+    int num_turns_value() const
+    {
+        return num_turns;
+    }
 };
 
 struct StreamEvent
@@ -366,8 +378,8 @@ struct StreamEvent
     int index = 0;     // Optional index when provided by CLI
 
     // Optional identifiers commonly provided by CLI
-    std::string uuid;                       // Optional identifier (empty if absent)
-    std::string session_id;                 // Optional session id (empty if absent)
+    std::string uuid;                              // Optional identifier (empty if absent)
+    std::string session_id;                        // Optional session id (empty if absent)
     std::optional<std::string> parent_tool_use_id; // Optional parent tool use id
 
     json data;     // Event-specific data (nested event object or flat payload)
@@ -378,16 +390,17 @@ struct StreamEvent
     {
         // Reconstruct Python-like event dict from C++ split representation
         json payload = data.is_object() ? data : json::object();
-        payload["type"] = event;  // Event name like "content_block_delta"
+        payload["type"] = event; // Event name like "content_block_delta"
         if (index != 0)
-        {
             payload["index"] = index;
-        }
         return payload;
     }
 
     // Alias for readability (Python-style naming)
-    json event_dict() const { return event_payload(); }
+    json event_dict() const
+    {
+        return event_payload();
+    }
 };
 
 // Main message variant (includes protocol types)
@@ -398,14 +411,15 @@ using Message = std::variant<UserMessage, AssistantMessage, SystemMessage, Resul
 struct ClaudeOptions
 {
     std::string model;
-    std::string fallback_model;  // Secondary model to use if primary model fails or is unavailable
+    std::string fallback_model; // Secondary model to use if primary model fails or is unavailable
     std::string system_prompt;
-    std::string system_prompt_append;  // Append to default claude_code preset (mutually exclusive with system_prompt)
+    std::string system_prompt_append; // Append to default claude_code preset (mutually exclusive
+                                      // with system_prompt)
     std::vector<std::string> allowed_tools;
     std::vector<std::string> disallowed_tools;
     std::string permission_mode; // "default", "acceptEdits", "plan", "bypassPermissions"
     std::optional<int> max_turns;
-    std::optional<double> max_budget_usd;          // v0.1.6: limit total cost in USD
+    std::optional<double> max_budget_usd; // v0.1.6: limit total cost in USD
     std::optional<std::string> working_directory;
     std::map<std::string, std::string> environment;
     // Optional explicit path to the Claude Code CLI executable.
@@ -417,16 +431,16 @@ struct ClaudeOptions
     std::vector<SdkPluginConfig> plugins;
 
     bool include_partial_messages = false;
-    std::string permission_prompt_tool_name; // Tool to prompt for permissions
-    std::string mcp_config;                  // MCP server configuration (JSON string or path)
-    std::vector<std::string> add_dirs;       // Additional directories to add
-    std::string settings;                    // Settings file path
-    std::string resume;                      // Resume session ID
+    std::string permission_prompt_tool_name;  // Tool to prompt for permissions
+    std::string mcp_config;                   // MCP server configuration (JSON string or path)
+    std::vector<std::string> add_dirs;        // Additional directories to add
+    std::string settings;                     // Settings file path
+    std::string resume;                       // Resume session ID
     std::vector<std::string> setting_sources; // Setting sources
     bool continue_conversation = false;       // Continue previous conversation
-    bool fork_session = false;               // Fork the session
-    std::optional<int> max_thinking_tokens;  // v0.1.6: limit thinking tokens
-    std::optional<json> output_format;       // v0.1.8: Structured output format (JSON schema)
+    bool fork_session = false;                // Fork the session
+    std::optional<int> max_thinking_tokens;   // v0.1.6: limit thinking tokens
+    std::optional<json> output_format;        // v0.1.8: Structured output format (JSON schema)
 
     // Control protocol hooks and callbacks
     /// Hook configurations organized by event type
@@ -443,7 +457,8 @@ struct ClaudeOptions
 
     /// Callback invoked when tool permission is requested.
     /// If not set, all tools are automatically allowed (like bypassPermissions mode).
-    /// Note: Executes on the message reader thread - blocking operations will delay message processing.
+    /// Note: Executes on the message reader thread - blocking operations will delay message
+    /// processing.
     std::optional<ToolPermissionCallback> tool_permission_callback;
 
     /// Callback invoked when CLI writes to stderr.
@@ -511,9 +526,7 @@ template <typename T>
 std::string dump_raw_json(const T& msg, int indent = 2)
 {
     if (msg.raw_json.empty())
-    {
         return "{}";
-    }
     return msg.raw_json.dump(indent);
 }
 

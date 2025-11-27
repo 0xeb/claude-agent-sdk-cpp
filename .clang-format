@@ -12,6 +12,9 @@ TabWidth: 4
 UseTab: Never
 ColumnLimit: 100
 
+# Remove braces from single-statement if/else/loop bodies
+RemoveBracesLLVM: true
+
 # Alignment
 AlignAfterOpenBracket: Align
 AlignConsecutiveAssignments: false
@@ -32,7 +35,7 @@ SpacesInParentheses: false
 SpacesInSquareBrackets: false
 
 # Breaking
-AllowShortBlocksOnASingleLine: false
+AllowShortBlocksOnASingleLine: Empty
 AllowShortFunctionsOnASingleLine: Empty
 AllowShortIfStatementsOnASingleLine: Never
 AllowShortLoopsOnASingleLine: false

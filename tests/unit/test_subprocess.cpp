@@ -212,9 +212,7 @@ TEST(ProcessTest, ImmediateExit)
     auto exit_code_opt = proc.try_wait();
     // Process might have already exited
     if (!exit_code_opt)
-    {
         exit_code_opt = proc.try_wait();
-    }
 
     int exit_code = proc.wait();
     EXPECT_EQ(exit_code, 0);

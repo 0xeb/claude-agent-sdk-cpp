@@ -2,13 +2,13 @@
 #define CLAUDE_MCP_SERVER_HPP
 
 #include <claude/mcp/tool.hpp>
-#include <nlohmann/json.hpp>
 #include <functional>
 #include <map>
 #include <memory>
+#include <nlohmann/json.hpp>
 #include <string>
-#include <vector>
 #include <type_traits>
+#include <vector>
 
 namespace claude
 {
@@ -22,14 +22,18 @@ namespace mcp
 /// Internal storage for type-erased tools
 class ToolStorage
 {
-public:
+  public:
     template <typename U>
-    static std::function<json(const json&)> make_handler_from(U&& tool) {
+    static std::function<json(const json&)> make_handler_from(U&& tool)
+    {
         using Decayed = std::decay_t<U>;
-        if constexpr (std::is_same_v<Decayed, Tool>) {
+        if constexpr (std::is_same_v<Decayed, Tool>)
+        {
             auto inv = tool.invoker();
             return [inv = std::move(inv)](const json& args) mutable { return inv(args); };
-        } else {
+        }
+        else
+        {
             return [w = std::forward<U>(tool)](const json& args) mutable { return w.invoke(args); };
         }
     }
@@ -41,36 +45,30 @@ public:
 
         // Check for duplicate names
         if (tools_.find(tool_name) != tools_.end())
-        {
             throw std::invalid_argument("Duplicate tool name: " + tool_name);
-        }
 
         // Store tool metadata and handler
         auto desc = tool.description();
         auto in_schema = tool.input_schema();
         auto out_schema = tool.output_schema();
-        StoredTool stored{
-            tool_name,
-            std::move(desc),
-            std::move(in_schema),
-            std::move(out_schema),
-            make_handler_from(std::forward<ToolWrapper>(tool))};
+        StoredTool stored{tool_name, std::move(desc), std::move(in_schema), std::move(out_schema),
+                          make_handler_from(std::forward<ToolWrapper>(tool))};
 
         tools_[tool_name] = std::move(stored);
     }
 
     /// Build an MCP JSON-RPC handler from stored tools
     std::function<json(const json&)> build_handler(const std::string& server_name,
-                                                    const std::string& version) const
+                                                   const std::string& version) const
     {
         // Capture tools by value
-        return [server_name, version, tools = tools_](const json& request) -> json {
+        return [server_name, version, tools = tools_](const json& request) -> json
+        {
             // Validate request structure
             if (!request.contains("method"))
             {
-                return build_error_response(
-                    request.value("id", json()), -32600,
-                    "Invalid Request: missing 'method' field");
+                return build_error_response(request.value("id", json()), -32600,
+                                            "Invalid Request: missing 'method' field");
             }
 
             std::string method = request["method"];
@@ -90,7 +88,7 @@ public:
                 if (!request.contains("params"))
                 {
                     return build_error_response(id, -32600,
-                                                 "Invalid Request: missing 'params' field");
+                                                "Invalid Request: missing 'params' field");
                 }
                 return build_tool_call_response(id, request["params"], tools);
             }
@@ -102,7 +100,10 @@ public:
     }
 
     /// Get number of tools
-    size_t size() const { return tools_.size(); }
+    size_t size() const
+    {
+        return tools_.size();
+    }
 
     /// Check if a tool exists
     bool has_tool(const std::string& name) const
@@ -110,7 +111,7 @@ public:
         return tools_.find(name) != tools_.end();
     }
 
-private:
+  private:
     /// Stored tool information
     struct StoredTool
     {
@@ -124,9 +125,8 @@ private:
     std::map<std::string, StoredTool> tools_;
 
     /// Build initialize response
-    static json build_initialize_response(const json& id,
-                                           const std::string& server_name,
-                                           const std::string& version)
+    static json build_initialize_response(const json& id, const std::string& server_name,
+                                          const std::string& version)
     {
         return json{
             {"jsonrpc", "2.0"},
@@ -134,13 +134,12 @@ private:
             {"result",
              {{"protocolVersion", "2024-11-05"},
               {"serverInfo", {{"name", server_name}, {"version", version}}},
-              {"capabilities",
-               {{"tools", json::object()}, {"resources", json::object()}}}}}};
+              {"capabilities", {{"tools", json::object()}, {"resources", json::object()}}}}}};
     }
 
     /// Build tools/list response
     static json build_tools_list_response(const json& id,
-                                           const std::map<std::string, StoredTool>& tools)
+                                          const std::map<std::string, StoredTool>& tools)
     {
         json tools_array = json::array();
 
@@ -156,16 +155,13 @@ private:
 
     /// Build tools/call response
     static json build_tool_call_response(const json& id, const json& params,
-                                          const std::map<std::string, StoredTool>& tools)
+                                         const std::map<std::string, StoredTool>& tools)
     {
         try
         {
             // Extract tool name and arguments
             if (!params.contains("name"))
-            {
-                return build_error_response(id, -32602,
-                                             "Invalid params: missing 'name' field");
-            }
+                return build_error_response(id, -32602, "Invalid params: missing 'name' field");
 
             std::string tool_name = params["name"];
             json arguments = params.value("arguments", json::object());
@@ -173,10 +169,7 @@ private:
             // Find tool
             auto it = tools.find(tool_name);
             if (it == tools.end())
-            {
-                return build_error_response(id, -32602,
-                                             "Tool not found: " + tool_name);
-            }
+                return build_error_response(id, -32602, "Tool not found: " + tool_name);
 
             // Invoke tool
             json result = it->second.handler(arguments);
@@ -186,18 +179,15 @@ private:
         }
         catch (const std::exception& e)
         {
-            return build_error_response(id, -32603,
-                                         "Internal error: " + std::string(e.what()));
+            return build_error_response(id, -32603, "Internal error: " + std::string(e.what()));
         }
     }
 
     /// Build error response
-    static json build_error_response(const json& id, int code,
-                                      const std::string& message)
+    static json build_error_response(const json& id, int code, const std::string& message)
     {
-        return json{{"jsonrpc", "2.0"},
-                    {"id", id},
-                    {"error", {{"code", code}, {"message", message}}}};
+        return json{
+            {"jsonrpc", "2.0"}, {"id", id}, {"error", {{"code", code}, {"message", message}}}};
     }
 };
 
@@ -225,9 +215,7 @@ inline auto create_server(const std::string& name, const std::string& version,
     ToolStorage storage;
 
     for (auto& tool : tools)
-    {
         storage.add(std::move(tool));
-    }
 
     return storage.build_handler(name, version);
 }
@@ -239,7 +227,7 @@ inline auto create_server(const std::string& name, const std::string& version,
 /// Fluent builder for MCP servers
 class ServerBuilder
 {
-public:
+  public:
     /// Construct with name and version
     ServerBuilder(std::string name, std::string version)
         : name_(std::move(name)), version_(std::move(version))
@@ -261,9 +249,12 @@ public:
     }
 
     /// Get number of registered tools
-    size_t tool_count() const { return storage_.size(); }
+    size_t tool_count() const
+    {
+        return storage_.size();
+    }
 
-private:
+  private:
     std::string name_;
     std::string version_;
     ToolStorage storage_;
