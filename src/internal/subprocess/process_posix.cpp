@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <claude/errors.hpp>
+#include <cstdlib>
 #include <cstring>
 #include <errno.h>
 #include <fcntl.h>
@@ -335,10 +336,20 @@ void Process::spawn(const std::string& executable, const std::vector<std::string
         }
 
         // Set environment variables
-        // Inherit current environment and merge with custom variables
-        if (!options.environment.empty())
-            for (const auto& [key, value] : options.environment)
-                setenv(key.c_str(), value.c_str(), 1); // Overwrite if exists
+        // Optionally strip inherited environment before applying overrides.
+        if (!options.inherit_environment)
+        {
+#if defined(__APPLE__) || defined(__linux__)
+            clearenv();
+#else
+            // Fallback: best-effort clearing by resetting environ
+            extern char** environ;
+            if (environ)
+                environ[0] = nullptr;
+#endif
+        }
+        for (const auto& [key, value] : options.environment)
+            setenv(key.c_str(), value.c_str(), 1); // Overwrite if exists
 
         // Build argv array
         std::vector<char*> argv;

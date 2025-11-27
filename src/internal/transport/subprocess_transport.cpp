@@ -35,6 +35,34 @@ constexpr size_t CMD_LENGTH_LIMIT = 8000;
 constexpr size_t CMD_LENGTH_LIMIT = 100000;
 #endif
 
+namespace
+{
+// Write agent definitions to a temp file with minimal symlink risk.
+std::string write_agents_temp_file(const std::string& contents,
+                                   std::vector<std::string>& temp_files)
+{
+    namespace fs = std::filesystem;
+    fs::path temp_file = fs::temp_directory_path() / fs::unique_path("claude_agents-%%%%-%%%%.json");
+
+    std::ofstream ofs(temp_file, std::ios::binary | std::ios::out | std::ios::trunc);
+    if (!ofs)
+        throw std::runtime_error("Failed to create temp file for --agents");
+    ofs << contents;
+    ofs.close();
+
+    std::error_code ec;
+    if (fs::is_symlink(temp_file, ec))
+    {
+        fs::remove(temp_file, ec);
+        throw std::runtime_error("Refusing to use symlinked temp file for --agents: " +
+                                 temp_file.string());
+    }
+
+    temp_files.push_back(temp_file.string());
+    return temp_file.string();
+}
+} // namespace
+
 SubprocessTransport::SubprocessTransport(const ClaudeOptions& options, bool streaming_mode)
     : options_(options), streaming_mode_(streaming_mode),
       parser_(std::make_unique<protocol::MessageParser>(
@@ -89,28 +117,9 @@ void SubprocessTransport::connect()
 
                 try
                 {
-                    // Create temporary file
-                    namespace fs = std::filesystem;
-                    fs::path temp_dir = fs::temp_directory_path();
-                    fs::path temp_file =
-                        temp_dir /
-                        ("claude_agents_" +
-                         std::to_string(
-                             std::chrono::system_clock::now().time_since_epoch().count()) +
-                         ".json");
-
-                    // Write agents JSON to file
-                    std::ofstream ofs(temp_file);
-                    if (!ofs)
-                        throw std::runtime_error("Failed to create temp file for --agents");
-                    ofs << agents_json_value;
-                    ofs.close();
-
-                    // Track for cleanup
-                    temp_files_.push_back(temp_file.string());
-
+                    auto temp_file = write_agents_temp_file(agents_json_value, temp_files_);
                     // Replace agents JSON with @filepath reference
-                    args[agents_idx + 1] = "@" + temp_file.string();
+                    args[agents_idx + 1] = "@" + temp_file;
 
                     std::cerr << "Command line length (" << cmd_length << ") exceeds limit ("
                               << CMD_LENGTH_LIMIT << "). "
@@ -133,6 +142,8 @@ void SubprocessTransport::connect()
     proc_opts.redirect_stdout = true;
     // Redirect stderr if callback is present
     proc_opts.redirect_stderr = options_.stderr_callback.has_value();
+    bool strip_env = std::getenv("CLAUDE_AGENT_SDK_STRIP_ENV") != nullptr;
+    proc_opts.inherit_environment = options_.inherit_environment && !strip_env;
 
     if (options_.working_directory)
         proc_opts.working_directory = *options_.working_directory;
@@ -528,6 +539,10 @@ std::vector<std::string> SubprocessTransport::build_command() const
 
 std::string SubprocessTransport::find_cli() const
 {
+    const bool require_explicit =
+        options_.require_explicit_cli ||
+        (std::getenv("CLAUDE_AGENT_SDK_REQUIRE_EXPLICIT_CLI") != nullptr);
+
     // If user provided explicit CLI path, prefer it
     if (!options_.cli_path.empty())
     {
@@ -548,6 +563,10 @@ std::string SubprocessTransport::find_cli() const
         if (fs::exists(p))
             return std::string(env_cli);
     }
+
+    if (require_explicit)
+        throw CLINotFoundError("CLAUDE_AGENT_SDK_REQUIRE_EXPLICIT_CLI is set; provide cli_path or "
+                               "CLAUDE_CLI_PATH");
 
     // Fallback: search PATH for 'claude'
     if (auto result = subprocess::find_executable("claude"))

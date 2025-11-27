@@ -88,6 +88,7 @@ struct ProcessOptions
 {
     std::string working_directory;
     std::map<std::string, std::string> environment;
+    bool inherit_environment = true;
     bool redirect_stdin = true;
     bool redirect_stdout = true;
     bool redirect_stderr = false;

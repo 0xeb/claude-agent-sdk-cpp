@@ -422,9 +422,13 @@ struct ClaudeOptions
     std::optional<double> max_budget_usd; // v0.1.6: limit total cost in USD
     std::optional<std::string> working_directory;
     std::map<std::string, std::string> environment;
+    bool inherit_environment = true; // If false, do not inherit parent environment when spawning CLI
     // Optional explicit path to the Claude Code CLI executable.
     // If empty, SDK searches PATH as usual.
     std::string cli_path;
+    // When true (or when CLAUDE_AGENT_SDK_REQUIRE_EXPLICIT_CLI is set), only explicit CLI paths
+    // are allowed (cli_path or CLAUDE_CLI_PATH). PATH/home discovery is disabled.
+    bool require_explicit_cli = false;
 
     // Plugin configurations
     // List of plugins to load. Each plugin is passed to CLI via --plugin-dir flag.
