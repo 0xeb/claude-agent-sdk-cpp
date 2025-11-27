@@ -9,6 +9,7 @@
 #include <iostream>
 #include <nlohmann/json.hpp>
 #include <regex>
+#include <random>
 #include <sstream>
 
 #ifdef _WIN32
@@ -42,7 +43,19 @@ std::string write_agents_temp_file(const std::string& contents,
                                    std::vector<std::string>& temp_files)
 {
     namespace fs = std::filesystem;
-    fs::path temp_file = fs::temp_directory_path() / fs::unique_path("claude_agents-%%%%-%%%%.json");
+    // Manual unique path to avoid dependency on std::filesystem::unique_path
+    auto make_name = [] {
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_int_distribution<int> dist(0, 15);
+        std::string hex(8, '0');
+        const char* digits = "0123456789abcdef";
+        for (auto& c : hex)
+            c = digits[dist(gen)];
+        return std::string("claude_agents-") + hex + ".json";
+    };
+
+    fs::path temp_file = fs::temp_directory_path() / make_name();
 
     std::ofstream ofs(temp_file, std::ios::binary | std::ios::out | std::ios::trunc);
     if (!ofs)
