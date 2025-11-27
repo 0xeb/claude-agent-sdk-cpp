@@ -8,6 +8,7 @@
 #include <claude/transport.hpp>
 #include <claude/version.hpp>
 #include <condition_variable>
+#include <cstdlib>
 #include <mutex>
 #include <nlohmann/json.hpp>
 #include <queue>
@@ -17,6 +18,27 @@ namespace claude
 {
 
 namespace {
+int get_initialize_timeout_ms()
+{
+    int initialize_timeout_ms = 60000;
+    if (const char* env = std::getenv("CLAUDE_CODE_STREAM_CLOSE_TIMEOUT"))
+    {
+        try
+        {
+            int parsed = std::stoi(env);
+            if (parsed > initialize_timeout_ms)
+            {
+                initialize_timeout_ms = parsed;
+            }
+        }
+        catch (...)
+        {
+            // Ignore parse errors; keep default
+        }
+    }
+    return initialize_timeout_ms;
+}
+
 // Convert Python-friendly hook output keys to CLI-expected keys.
 // - async_     -> async
 // - continue_  -> continue
@@ -55,6 +77,12 @@ static json convert_hook_output_for_cli(const json& hook_output)
     return converted;
 }
 } // namespace
+
+// Exposed for unit testing of environment-driven initialize timeout
+int claude_test_get_initialize_timeout_ms()
+{
+    return get_initialize_timeout_ms();
+}
 
 // MessageStream::Impl - Thread-safe message queue
 class MessageStream::Impl
@@ -242,6 +270,9 @@ class ClaudeClient::Impl
 
     void initialize()
     {
+        // Determine initialize timeout from environment (CLAUDE_CODE_STREAM_CLOSE_TIMEOUT in ms, min 60000)
+        int initialize_timeout_ms = get_initialize_timeout_ms();
+
         // Send initialize control request
         auto write_func = [this](const std::string& data) { transport_->write(data); };
 
@@ -304,7 +335,7 @@ class ClaudeClient::Impl
         try
         {
             initialization_result_ =
-                control_protocol_->send_request(write_func, "initialize", request_data);
+                control_protocol_->send_request(write_func, "initialize", request_data, initialize_timeout_ms);
             initialized_ = true;
         }
         catch (const std::exception&)

@@ -237,11 +237,11 @@ struct HookMatcher
     /// List of callback functions to invoke when hook matches
     std::vector<HookCallback> hooks;
 
-    /// Timeout in seconds for hook execution (default: 60)
-    std::optional<int> timeout;
+    /// Timeout in seconds for hook execution (default: 60). Accepts fractional seconds.
+    std::optional<double> timeout;
 
     HookMatcher() = default;
-    HookMatcher(std::optional<std::string> m, std::vector<HookCallback> h, std::optional<int> t = std::nullopt)
+    HookMatcher(std::optional<std::string> m, std::vector<HookCallback> h, std::optional<double> t = std::nullopt)
         : matcher(std::move(m)), hooks(std::move(h)), timeout(t) {}
 };
 
