@@ -16,10 +16,10 @@ int main()
 
     try
     {
-        auto result = query(
-            "Solve: You have 12 apples, you give 5 to Alice, 3 to Bob, then buy 7 more. "
-            "Explain step by step, but be concise.",
-            opts);
+        auto result =
+            query("Solve: You have 12 apples, you give 5 to Alice, 3 to Bob, then buy 7 more. "
+                  "Explain step by step, but be concise.",
+                  opts);
 
         for (const auto& msg : result)
         {
@@ -49,4 +49,3 @@ int main()
 
     return 0;
 }
-

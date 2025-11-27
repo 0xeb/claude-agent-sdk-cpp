@@ -21,13 +21,11 @@ void plugin_example()
 
     // Configure Claude with plugin
     claude::ClaudeOptions opts;
-    opts.plugins = {
-        claude::SdkPluginConfig{
-            "local",  // type
-            plugin_path.string()  // path
-        }
-    };
-    opts.max_turns = 1;  // Limit to one turn for quick demo
+    opts.plugins = {claude::SdkPluginConfig{
+        "local",             // type
+        plugin_path.string() // path
+    }};
+    opts.max_turns = 1; // Limit to one turn for quick demo
 
     std::cout << "Loading plugin from: " << plugin_path << "\n\n";
 
@@ -63,7 +61,8 @@ void plugin_example()
                 }
                 else
                 {
-                    std::cout << "Note: Plugin was passed via CLI but may not appear in system message.\n";
+                    std::cout << "Note: Plugin was passed via CLI but may not appear in system "
+                                 "message.\n";
                     std::cout << "Plugin path configured: " << plugin_path << "\n";
                     found_plugins = true;
                 }

@@ -3,17 +3,15 @@
 
 #include "process.hpp"
 
-#include <claude/errors.hpp>
-
 #include <algorithm>
+#include <claude/errors.hpp>
 #include <cstring>
-#include <filesystem>
-#include <sstream>
-#include <stdexcept>
-
 #include <errno.h>
 #include <fcntl.h>
+#include <filesystem>
 #include <signal.h>
+#include <sstream>
+#include <stdexcept>
 #include <sys/select.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -50,9 +48,7 @@ struct PipeHandle
     ~PipeHandle()
     {
         if (fd >= 0)
-        {
             ::close(fd);
-        }
     }
 };
 
@@ -69,13 +65,9 @@ static void set_nonblocking(int fd)
 {
     int flags = fcntl(fd, F_GETFL, 0);
     if (flags == -1)
-    {
         throw std::runtime_error("fcntl F_GETFL failed: " + get_errno_message());
-    }
     if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1)
-    {
         throw std::runtime_error("fcntl F_SETFL failed: " + get_errno_message());
-    }
 }
 
 // ============================================================================
@@ -95,17 +87,13 @@ ReadPipe& ReadPipe::operator=(ReadPipe&&) noexcept = default;
 size_t ReadPipe::read(char* buffer, size_t size)
 {
     if (!is_open())
-    {
         throw std::runtime_error("Pipe is not open");
-    }
 
     ssize_t bytes_read = ::read(handle_->fd, buffer, size);
     if (bytes_read < 0)
     {
         if (errno == EAGAIN || errno == EWOULDBLOCK)
-        {
             return 0; // No data available (non-blocking)
-        }
         throw std::runtime_error("Read failed: " + get_errno_message());
     }
 
@@ -147,9 +135,7 @@ bool ReadPipe::has_data(int timeout_ms)
 
     int result = select(handle_->fd + 1, &read_fds, nullptr, nullptr, &timeout);
     if (result < 0)
-    {
         throw std::runtime_error("select failed: " + get_errno_message());
-    }
 
     return result > 0 && FD_ISSET(handle_->fd, &read_fds);
 }
@@ -185,17 +171,13 @@ WritePipe& WritePipe::operator=(WritePipe&&) noexcept = default;
 size_t WritePipe::write(const char* data, size_t size)
 {
     if (!is_open())
-    {
         throw std::runtime_error("Pipe is not open");
-    }
 
     ssize_t bytes_written = ::write(handle_->fd, data, size);
     if (bytes_written < 0)
     {
         if (errno == EPIPE)
-        {
             throw std::runtime_error("Broken pipe (process closed stdin)");
-        }
         throw std::runtime_error("Write failed: " + get_errno_message());
     }
 
@@ -253,9 +235,7 @@ void Process::spawn(const std::string& executable, const std::vector<std::string
     if (options.redirect_stdin)
     {
         if (pipe(stdin_pipe) != 0)
-        {
             throw std::runtime_error("Failed to create stdin pipe: " + get_errno_message());
-        }
     }
 
     // Create pipes for stdout
@@ -325,9 +305,7 @@ void Process::spawn(const std::string& executable, const std::vector<std::string
         {
             ::close(stdin_pipe[1]); // Close write end
             if (dup2(stdin_pipe[0], STDIN_FILENO) < 0)
-            {
                 _exit(127);
-            }
             ::close(stdin_pipe[0]);
         }
 
@@ -336,9 +314,7 @@ void Process::spawn(const std::string& executable, const std::vector<std::string
         {
             ::close(stdout_pipe[0]); // Close read end
             if (dup2(stdout_pipe[1], STDOUT_FILENO) < 0)
-            {
                 _exit(127);
-            }
             ::close(stdout_pipe[1]);
         }
 
@@ -347,9 +323,7 @@ void Process::spawn(const std::string& executable, const std::vector<std::string
         {
             ::close(stderr_pipe[0]); // Close read end
             if (dup2(stderr_pipe[1], STDERR_FILENO) < 0)
-            {
                 _exit(127);
-            }
             ::close(stderr_pipe[1]);
         }
 
@@ -357,28 +331,20 @@ void Process::spawn(const std::string& executable, const std::vector<std::string
         if (!options.working_directory.empty())
         {
             if (chdir(options.working_directory.c_str()) != 0)
-            {
                 _exit(127);
-            }
         }
 
         // Set environment variables
         // Inherit current environment and merge with custom variables
         if (!options.environment.empty())
-        {
             for (const auto& [key, value] : options.environment)
-            {
                 setenv(key.c_str(), value.c_str(), 1); // Overwrite if exists
-            }
-        }
 
         // Build argv array
         std::vector<char*> argv;
         argv.push_back(const_cast<char*>(executable.c_str()));
         for (const auto& arg : args)
-        {
             argv.push_back(const_cast<char*>(arg.c_str()));
-        }
         argv.push_back(nullptr);
 
         // Execute the program
@@ -420,53 +386,39 @@ void Process::spawn(const std::string& executable, const std::vector<std::string
 WritePipe& Process::stdin_pipe()
 {
     if (!stdin_)
-    {
         throw std::runtime_error("stdin not redirected");
-    }
     return *stdin_;
 }
 
 ReadPipe& Process::stdout_pipe()
 {
     if (!stdout_)
-    {
         throw std::runtime_error("stdout not redirected");
-    }
     return *stdout_;
 }
 
 ReadPipe& Process::stderr_pipe()
 {
     if (!stderr_)
-    {
         throw std::runtime_error("stderr not redirected");
-    }
     return *stderr_;
 }
 
 bool Process::is_running() const
 {
     if (!handle_ || handle_->pid == 0)
-    {
         return false;
-    }
 
     if (!handle_->running)
-    {
         return false;
-    }
 
     // Check process status using kill with signal 0
     int result = ::kill(handle_->pid, 0);
     if (result == 0)
-    {
         return true; // Process exists
-    }
 
     if (errno == ESRCH)
-    {
         return false; // Process doesn't exist
-    }
 
     // For other errors (EPERM), assume process exists
     return true;
@@ -475,14 +427,10 @@ bool Process::is_running() const
 std::optional<int> Process::try_wait()
 {
     if (!handle_ || handle_->pid == 0)
-    {
         return handle_ ? handle_->exit_code : -1;
-    }
 
     if (!handle_->running)
-    {
         return handle_->exit_code;
-    }
 
     int status;
     pid_t result = waitpid(handle_->pid, &status, WNOHANG);
@@ -491,17 +439,11 @@ std::optional<int> Process::try_wait()
     {
         // Process has exited
         if (WIFEXITED(status))
-        {
             handle_->exit_code = WEXITSTATUS(status);
-        }
         else if (WIFSIGNALED(status))
-        {
             handle_->exit_code = 128 + WTERMSIG(status);
-        }
         else
-        {
             handle_->exit_code = -1;
-        }
         handle_->running = false;
         return handle_->exit_code;
     }
@@ -520,14 +462,10 @@ std::optional<int> Process::try_wait()
 int Process::wait()
 {
     if (!handle_ || handle_->pid == 0)
-    {
         return handle_ ? handle_->exit_code : -1;
-    }
 
     if (!handle_->running)
-    {
         return handle_->exit_code;
-    }
 
     int status;
     pid_t result = waitpid(handle_->pid, &status, 0);
@@ -535,17 +473,11 @@ int Process::wait()
     if (result == handle_->pid)
     {
         if (WIFEXITED(status))
-        {
             handle_->exit_code = WEXITSTATUS(status);
-        }
         else if (WIFSIGNALED(status))
-        {
             handle_->exit_code = 128 + WTERMSIG(status);
-        }
         else
-        {
             handle_->exit_code = -1;
-        }
         handle_->running = false;
         return handle_->exit_code;
     }
@@ -556,17 +488,13 @@ int Process::wait()
 void Process::terminate()
 {
     if (handle_ && handle_->pid > 0 && handle_->running)
-    {
         ::kill(handle_->pid, SIGTERM);
-    }
 }
 
 void Process::kill()
 {
     if (handle_ && handle_->pid > 0 && handle_->running)
-    {
         ::kill(handle_->pid, SIGKILL);
-    }
 }
 
 int Process::pid() const
@@ -587,9 +515,7 @@ std::optional<std::string> find_executable(const std::string& name)
     if (exe_path.is_absolute())
     {
         if (fs::exists(exe_path) && access(exe_path.c_str(), X_OK) == 0)
-        {
             return name;
-        }
         return std::nullopt;
     }
 
@@ -597,9 +523,7 @@ std::optional<std::string> find_executable(const std::string& name)
     if (name.find('/') != std::string::npos)
     {
         if (fs::exists(name) && access(name.c_str(), X_OK) == 0)
-        {
             return fs::absolute(name).string();
-        }
         return std::nullopt;
     }
 
@@ -609,9 +533,7 @@ std::optional<std::string> find_executable(const std::string& name)
     {
         // No PATH set - try current directory
         if (fs::exists(name) && access(name.c_str(), X_OK) == 0)
-        {
             return fs::absolute(name).string();
-        }
         return std::nullopt;
     }
 
@@ -627,9 +549,7 @@ std::optional<std::string> find_executable(const std::string& name)
         {
             fs::path test_path = fs::path(dir) / name;
             if (fs::exists(test_path) && access(test_path.c_str(), X_OK) == 0)
-            {
                 return test_path.string();
-            }
         }
 
         start = end + 1;
@@ -643,9 +563,7 @@ std::optional<std::string> find_executable(const std::string& name)
         {
             fs::path test_path = fs::path(dir) / name;
             if (fs::exists(test_path) && access(test_path.c_str(), X_OK) == 0)
-            {
                 return test_path.string();
-            }
         }
     }
 

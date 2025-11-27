@@ -41,12 +41,8 @@ std::vector<std::string> extract_slash_commands(const SystemMessage& msg)
         if (data.contains("slash_commands") && data["slash_commands"].is_array())
         {
             for (const auto& cmd : data["slash_commands"])
-            {
                 if (cmd.is_string())
-                {
                     commands.push_back(cmd.get<std::string>());
-                }
-            }
         }
     }
     return commands;
@@ -78,20 +74,18 @@ void example_default()
                 std::cout << "Available slash commands: [";
                 for (size_t i = 0; i < commands.size(); ++i)
                 {
-                    if (i > 0) std::cout << ", ";
+                    if (i > 0)
+                        std::cout << ", ";
                     std::cout << commands[i];
                 }
                 std::cout << "]\n";
 
-                bool has_commit = std::find(commands.begin(), commands.end(), "commit") != commands.end();
+                bool has_commit =
+                    std::find(commands.begin(), commands.end(), "commit") != commands.end();
                 if (has_commit)
-                {
                     std::cout << "❌ /commit is available (unexpected)\n";
-                }
                 else
-                {
                     std::cout << "✓ /commit is NOT available (expected - no settings loaded)\n";
-                }
                 break;
             }
             else if (is_result_message(msg))
@@ -136,20 +130,18 @@ void example_user_only()
                 std::cout << "Available slash commands: [";
                 for (size_t i = 0; i < commands.size(); ++i)
                 {
-                    if (i > 0) std::cout << ", ";
+                    if (i > 0)
+                        std::cout << ", ";
                     std::cout << commands[i];
                 }
                 std::cout << "]\n";
 
-                bool has_commit = std::find(commands.begin(), commands.end(), "commit") != commands.end();
+                bool has_commit =
+                    std::find(commands.begin(), commands.end(), "commit") != commands.end();
                 if (has_commit)
-                {
                     std::cout << "❌ /commit is available (unexpected)\n";
-                }
                 else
-                {
                     std::cout << "✓ /commit is NOT available (expected)\n";
-                }
                 break;
             }
             else if (is_result_message(msg))
@@ -194,20 +186,18 @@ void example_project_and_user()
                 std::cout << "Available slash commands: [";
                 for (size_t i = 0; i < commands.size(); ++i)
                 {
-                    if (i > 0) std::cout << ", ";
+                    if (i > 0)
+                        std::cout << ", ";
                     std::cout << commands[i];
                 }
                 std::cout << "]\n";
 
-                bool has_commit = std::find(commands.begin(), commands.end(), "commit") != commands.end();
+                bool has_commit =
+                    std::find(commands.begin(), commands.end(), "commit") != commands.end();
                 if (has_commit)
-                {
                     std::cout << "✓ /commit is available (expected)\n";
-                }
                 else
-                {
                     std::cout << "❌ /commit is NOT available (unexpected)\n";
-                }
                 break;
             }
             else if (is_result_message(msg))
@@ -274,4 +264,3 @@ int main(int argc, char* argv[])
 
     return 0;
 }
-

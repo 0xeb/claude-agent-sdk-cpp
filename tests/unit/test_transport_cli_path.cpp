@@ -17,4 +17,3 @@ TEST(TransportCliPathTest, InvalidCliPathRaisesError)
     auto transport = create_subprocess_transport(opts);
     EXPECT_THROW(transport->connect(), CLINotFoundError);
 }
-

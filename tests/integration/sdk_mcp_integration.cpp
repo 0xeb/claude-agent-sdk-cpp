@@ -1,8 +1,8 @@
-#include <gtest/gtest.h>
+#include <chrono>
 #include <claude/client.hpp>
 #include <claude/mcp.hpp>
+#include <gtest/gtest.h>
 #include <thread>
-#include <chrono>
 
 using namespace claude;
 using json = nlohmann::json;
@@ -16,18 +16,16 @@ TEST(SdkMcpIntegration, ToolCreation)
 {
     using namespace claude::mcp;
 
-    auto echo = make_tool("echo", "Echo input", [](std::string input) -> std::string {
-        return input;
-    }, std::vector<std::string>{"input"});
+    auto echo = make_tool(
+        "echo", "Echo input", [](std::string input) -> std::string { return input; },
+        std::vector<std::string>{"input"});
 
     auto server = create_server("test", "1.0", echo);
 
-    json call_req = {
-        {"jsonrpc", "2.0"},
-        {"id", 1},
-        {"method", "tools/call"},
-        {"params", {{"name", "echo"}, {"arguments", {{"input", "test"}}}}}
-    };
+    json call_req = {{"jsonrpc", "2.0"},
+                     {"id", 1},
+                     {"method", "tools/call"},
+                     {"params", {{"name", "echo"}, {"arguments", {{"input", "test"}}}}}};
 
     auto response = server(call_req);
 
@@ -60,18 +58,17 @@ TEST(SdkMcpIntegration, ImageContentSupport)
     using namespace claude::mcp;
 
     // Sample base64 1x1 PNG (minimal valid PNG)
-    std::string png_b64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVQI12P4//8/AAX+Av7czFnnAAAAAElFTkSuQmCC";
+    std::string png_b64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVQI12P4//8/"
+                          "AAX+Av7czFnnAAAAAElFTkSuQmCC";
 
     auto generate_chart = make_tool(
-        "generate_chart",
-        "Generate chart",
-        [png_b64](std::string title) -> json {
+        "generate_chart", "Generate chart",
+        [png_b64](std::string title) -> json
+        {
             return json{
-                {"content", json::array({
-                    {{"type", "text"}, {"text", "Generated chart: " + title}},
-                    {{"type", "image"}, {"data", png_b64}, {"mimeType", "image/png"}}
-                })}
-            };
+                {"content",
+                 json::array({{{"type", "text"}, {"text", "Generated chart: " + title}},
+                              {{"type", "image"}, {"data", png_b64}, {"mimeType", "image/png"}}})}};
         },
         std::vector<std::string>{"title"});
 
@@ -81,8 +78,7 @@ TEST(SdkMcpIntegration, ImageContentSupport)
         {"jsonrpc", "2.0"},
         {"id", 1},
         {"method", "tools/call"},
-        {"params", {{"name", "generate_chart"}, {"arguments", {{"title", "Sales Report"}}}}}
-    };
+        {"params", {{"name", "generate_chart"}, {"arguments", {{"title", "Sales Report"}}}}}};
 
     auto response = server(call_req);
 
@@ -104,9 +100,7 @@ TEST(SdkMcpIntegration, MixedServers)
 {
     using namespace claude::mcp;
 
-    auto sdk_tool = make_tool("sdk_tool", "SDK tool", []() -> std::string {
-        return "from SDK";
-    });
+    auto sdk_tool = make_tool("sdk_tool", "SDK tool", []() -> std::string { return "from SDK"; });
     auto sdk_server = create_server("sdk-server", "1.0", sdk_tool);
 
     ClaudeOptions opts;

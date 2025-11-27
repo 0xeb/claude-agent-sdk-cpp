@@ -1,5 +1,5 @@
-#include <gtest/gtest.h>
 #include <claude/claude.hpp>
+#include <gtest/gtest.h>
 
 // Integration test for cppclient + fastmcpp MCP tool creation
 // This test verifies that fast mcpp's make_mcp_handler() can be used
@@ -9,9 +9,9 @@
 // conditionally compiled based on whether fastmcpp is found.
 
 #ifdef FASTMCPP_AVAILABLE
-#include <fastmcpp/tools/manager.hpp>
-#include <fastmcpp/server/server.hpp>
 #include <fastmcpp/mcp/handler.hpp>
+#include <fastmcpp/server/server.hpp>
+#include <fastmcpp/tools/manager.hpp>
 
 TEST(FastmcppIntegration, CreateHandlerFromToolManager)
 {
@@ -25,10 +25,7 @@ TEST(FastmcppIntegration, CreateHandlerFromToolManager)
              {"properties", Json{{"a", Json{{"type", "number"}}}, {"b", Json{{"type", "number"}}}}},
              {"required", Json::array({"a", "b"})}},
         Json{{"type", "number"}},
-        [](const Json& in) {
-            return in.at("a").get<double>() + in.at("b").get<double>();
-        }
-    };
+        [](const Json& in) { return in.at("a").get<double>() + in.at("b").get<double>(); }};
     tm.register_tool(add);
 
     // Build MCP handler
@@ -74,18 +71,20 @@ TEST(FastmcppIntegration, UseHandlerWithClaudeClient)
              {"properties", Json{{"a", Json{{"type", "number"}}}, {"b", Json{{"type", "number"}}}}},
              {"required", Json::array({"a", "b"})}},
         Json{{"type", "number"}},
-        [](const Json& in) {
-            return in.at("a").get<double>() + in.at("b").get<double>();
-        }
-    };
+        [](const Json& in) { return in.at("a").get<double>() + in.at("b").get<double>(); }};
     tm.register_tool(add);
 
     // Create server for routing
     auto srv = std::make_shared<fastmcpp::server::Server>();
-    srv->route("add", [&tm](const Json& input) {
-        auto result = tm.invoke("add", input);
-        return Json{{"content", Json::array({Json{{"type", "text"}, {"text", std::string("Sum: ") + result.dump()}}})}};
-    });
+    srv->route(
+        "add",
+        [&tm](const Json& input)
+        {
+            auto result = tm.invoke("add", input);
+            return Json{
+                {"content", Json::array({Json{{"type", "text"},
+                                              {"text", std::string("Sum: ") + result.dump()}}})}};
+        });
 
     // Build MCP handler
     auto handler = fastmcpp::mcp::make_mcp_handler("calc", "1.0.0", *srv, tm);

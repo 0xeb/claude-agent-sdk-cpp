@@ -1,10 +1,10 @@
 #ifndef CLAUDE_MCP_ARGUMENT_EXTRACTOR_HPP
 #define CLAUDE_MCP_ARGUMENT_EXTRACTOR_HPP
 
-#include <claude/mcp/type_traits.hpp>
-#include <nlohmann/json.hpp>
 #include <array>
+#include <claude/mcp/type_traits.hpp>
 #include <functional>
+#include <nlohmann/json.hpp>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -35,9 +35,7 @@ T extract_json_value(const json& j, const std::string& param_name)
         else if constexpr (std::is_same_v<BaseType, std::string>)
         {
             if (j.is_string())
-            {
                 return j.get<std::string>();
-            }
             // Try to convert other types to string
             return j.dump();
         }
@@ -74,7 +72,7 @@ auto invoke_with_json(Func& func, const json& args,
                       const std::array<std::string, sizeof...(Args)>& param_names)
 {
     return invoke_with_json_impl<Func, Args...>(func, args, param_names,
-                                                 std::make_index_sequence<sizeof...(Args)>{});
+                                                std::make_index_sequence<sizeof...(Args)>{});
 }
 
 // ============================================================================
@@ -85,7 +83,7 @@ auto invoke_with_json(Func& func, const json& args,
 template <typename Func>
 class JsonInvoker
 {
-public:
+  public:
     using Traits = FunctionTraits<remove_cvref_t<Func>>;
     using ReturnType = typename Traits::ReturnType;
     static constexpr size_t Arity = Traits::arity;
@@ -102,7 +100,7 @@ public:
         return invoke_and_wrap(args, std::make_index_sequence<Arity>{});
     }
 
-private:
+  private:
     /// Extract arguments, invoke function, and wrap result (with indices)
     template <size_t... Indices>
     json invoke_and_wrap(const json& args, std::index_sequence<Indices...>)
@@ -134,8 +132,7 @@ private:
     /// Wrap void result in MCP format
     json wrap_void_result()
     {
-        return json{{"content",
-                     json::array({json{{"type", "text"}, {"text", "Success"}}})}};
+        return json{{"content", json::array({json{{"type", "text"}, {"text", "Success"}}})}};
     }
 
     /// Wrap result in MCP format
@@ -155,15 +152,14 @@ private:
             else
             {
                 // Raw JSON - wrap in MCP format
-                return json{{"content",
-                             json::array({json{{"type", "text"}, {"text", result.dump()}}})}};
+                return json{
+                    {"content", json::array({json{{"type", "text"}, {"text", result.dump()}}})}};
             }
         }
         else if constexpr (std::is_same_v<BaseType, std::string>)
         {
             // String result
-            return json{{"content",
-                         json::array({json{{"type", "text"}, {"text", result}}})}};
+            return json{{"content", json::array({json{{"type", "text"}, {"text", result}}})}};
         }
         else if constexpr (std::is_arithmetic_v<BaseType>)
         {
@@ -174,15 +170,14 @@ private:
         else if constexpr (std::is_same_v<BaseType, bool>)
         {
             // Boolean result - convert to string
-            return json{{"content",
-                         json::array({json{{"type", "text"}, {"text", result ? "true" : "false"}}})}};
+            return json{{"content", json::array({json{{"type", "text"},
+                                                      {"text", result ? "true" : "false"}}})}};
         }
         else
         {
             // Try to convert to JSON and wrap
             json j = result;
-            return json{{"content",
-                         json::array({json{{"type", "text"}, {"text", j.dump()}}})}};
+            return json{{"content", json::array({json{{"type", "text"}, {"text", j.dump()}}})}};
         }
     }
 
@@ -212,9 +207,7 @@ auto make_json_invoker(Func&& func, std::vector<std::string> names)
     // Convert vector to array
     std::array<std::string, Arity> names_array;
     for (size_t i = 0; i < Arity; ++i)
-    {
         names_array[i] = names[i];
-    }
 
     return JsonInvoker<remove_cvref_t<Func>>(func, std::move(names_array));
 }

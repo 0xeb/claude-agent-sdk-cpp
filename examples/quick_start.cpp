@@ -116,14 +116,10 @@ int main()
         std::cout << "Response: " << response << "\n";
 
         if (TIMING)
-        {
             std::cout << "Time: " << duration.count() << " ms";
-        }
 
         if (DEBUG)
-        {
             std::cout << " (" << message_count << " messages)";
-        }
 
         std::cout << "\n\n";
     }

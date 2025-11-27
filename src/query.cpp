@@ -20,9 +20,7 @@ QueryResult::Iterator::Iterator(std::shared_ptr<std::vector<Message>> messages, 
 QueryResult::Iterator::reference QueryResult::Iterator::operator*() const
 {
     if (!messages_ || index_ >= messages_->size())
-    {
         throw std::out_of_range("Iterator out of range");
-    }
     return (*messages_)[index_];
 }
 
@@ -90,9 +88,7 @@ const std::vector<Message>& QueryResult::messages() const
 QueryResult query(const std::string& prompt, const ClaudeOptions& options)
 {
     if (prompt.empty())
-    {
         throw ClaudeError("Prompt cannot be empty");
-    }
 
     try
     {

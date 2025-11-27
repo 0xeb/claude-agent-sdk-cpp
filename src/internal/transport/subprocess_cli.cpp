@@ -1,14 +1,14 @@
 #include "subprocess_cli.hpp"
 
+#include <chrono>
 #include <claude/errors.hpp>
 #include <claude/version.hpp>
 #include <cstdlib>
 #include <filesystem>
-#include <iostream>
-#include <sstream>
 #include <fstream>
-#include <chrono>
+#include <iostream>
 #include <regex>
+#include <sstream>
 
 namespace claude
 {
@@ -46,15 +46,11 @@ SubprocessCLITransport::operator=(SubprocessCLITransport&&) noexcept = default;
 void SubprocessCLITransport::connect()
 {
     if (process_)
-    {
         return; // Already connected
-    }
 
     // Check version unless explicitly skipped via environment variable
     if (!std::getenv("CLAUDE_AGENT_SDK_SKIP_VERSION_CHECK"))
-    {
         check_cli_version();
-    }
 
     auto args = build_command();
 
@@ -65,9 +61,7 @@ void SubprocessCLITransport::connect()
         // Calculate estimated command line length
         size_t cmd_length = cli_path_.length();
         for (const auto& arg : args)
-        {
             cmd_length += 1 + arg.length(); // +1 for space
-        }
 
         // If command line exceeds limit, use temp file for --agents JSON
         if (cmd_length > CMD_LENGTH_LIMIT)
@@ -84,14 +78,17 @@ void SubprocessCLITransport::connect()
                     // Create temporary file
                     namespace fs = std::filesystem;
                     fs::path temp_dir = fs::temp_directory_path();
-                    fs::path temp_file = temp_dir / ("claude_agents_" + std::to_string(std::chrono::system_clock::now().time_since_epoch().count()) + ".json");
+                    fs::path temp_file =
+                        temp_dir /
+                        ("claude_agents_" +
+                         std::to_string(
+                             std::chrono::system_clock::now().time_since_epoch().count()) +
+                         ".json");
 
                     // Write agents JSON to file
                     std::ofstream ofs(temp_file);
                     if (!ofs)
-                    {
                         throw std::runtime_error("Failed to create temp file for --agents");
-                    }
                     ofs << agents_json_value;
                     ofs.close();
 
@@ -101,15 +98,16 @@ void SubprocessCLITransport::connect()
                     // Replace agents JSON with @filepath reference
                     args[agents_idx + 1] = "@" + temp_file.string();
 
-                    std::cerr << "Command line length (" << cmd_length
-                              << ") exceeds limit (" << CMD_LENGTH_LIMIT << "). "
+                    std::cerr << "Command line length (" << cmd_length << ") exceeds limit ("
+                              << CMD_LENGTH_LIMIT << "). "
                               << "Using temp file for --agents: " << temp_file << std::endl;
                 }
                 catch (const std::exception& e)
                 {
-                    std::cerr << "Warning: Failed to optimize command line length: "
-                              << e.what() << std::endl;
-                    // Continue with original args (may fail on Windows with very long command lines)
+                    std::cerr << "Warning: Failed to optimize command line length: " << e.what()
+                              << std::endl;
+                    // Continue with original args (may fail on Windows with very long command
+                    // lines)
                 }
             }
         }
@@ -117,15 +115,11 @@ void SubprocessCLITransport::connect()
 
     subprocess::ProcessOptions proc_opts;
     if (options_.working_directory)
-    {
         proc_opts.working_directory = *options_.working_directory;
-    }
 
     // Enable stderr redirection if callback is set
     if (options_.stderr_callback.has_value())
-    {
         proc_opts.redirect_stderr = true;
-    }
 
     // Merge environment variables
     proc_opts.environment = options_.environment;
@@ -148,16 +142,12 @@ void SubprocessCLITransport::connect()
             cmd_path.parent_path() / "node_modules" / "@anthropic-ai" / "claude-code" / "cli.js";
 
         if (!std::filesystem::exists(cli_js))
-        {
             throw CLINotFoundError("Claude Code cli.js not found at: " + cli_js.string());
-        }
 
         // Find node.exe
         auto node_path = subprocess::find_executable("node");
         if (!node_path)
-        {
             throw CLINotFoundError("node.exe not found in PATH");
-        }
 
         // Use node.exe with cli.js as first argument
         executable = *node_path;
@@ -171,9 +161,7 @@ void SubprocessCLITransport::connect()
 #ifdef _DEBUG
     std::cerr << "[DEBUG] Spawning: " << executable << "\n";
     for (size_t i = 0; i < final_args.size(); ++i)
-    {
         std::cerr << "[DEBUG]   arg[" << i << "]: " << final_args[i] << "\n";
-    }
 #endif
 
     try
@@ -183,15 +171,14 @@ void SubprocessCLITransport::connect()
         // For one-shot queries (--print mode), close stdin immediately
         // The prompt is on command line, no need to keep stdin open
         if (!is_streaming_)
-        {
             process_->stdin_pipe().close();
-        }
 
         // Start stderr reader thread if callback is set
         if (options_.stderr_callback.has_value())
         {
             stderr_stop_flag_ = false;
-            stderr_thread_ = std::make_unique<std::thread>(&SubprocessCLITransport::stderr_reader, this);
+            stderr_thread_ =
+                std::make_unique<std::thread>(&SubprocessCLITransport::stderr_reader, this);
         }
 
         ready_ = true;
@@ -226,7 +213,7 @@ std::vector<std::string> SubprocessCLITransport::build_command()
     else
     {
         cmd.push_back("--system-prompt");
-        cmd.push_back("");  // Empty string required by CLI
+        cmd.push_back(""); // Empty string required by CLI
     }
 
     // Allowed tools
@@ -294,9 +281,7 @@ std::vector<std::string> SubprocessCLITransport::build_command()
 
     // Partial messages
     if (options_.include_partial_messages)
-    {
         cmd.push_back("--include-partial-messages");
-    }
 
     // Permission prompt tool
     if (!options_.permission_prompt_tool_name.empty())
@@ -307,9 +292,7 @@ std::vector<std::string> SubprocessCLITransport::build_command()
 
     // Continue conversation
     if (options_.continue_conversation)
-    {
         cmd.push_back("--continue");
-    }
 
     // Resume session
     if (!options_.resume.empty())
@@ -345,13 +328,11 @@ std::vector<std::string> SubprocessCLITransport::build_command()
     }
     // else: oss_sources remains empty string
     cmd.push_back("--setting-sources");
-    cmd.push_back(oss_sources.str());  // May be empty string, which CLI expects
+    cmd.push_back(oss_sources.str()); // May be empty string, which CLI expects
 
     // Fork session
     if (options_.fork_session)
-    {
         cmd.push_back("--fork-session");
-    }
 
     // Agent definitions (JSON format)
     if (!options_.agents.empty())
@@ -363,13 +344,9 @@ std::vector<std::string> SubprocessCLITransport::build_command()
             agent_obj["description"] = def.description;
             agent_obj["prompt"] = def.prompt;
             if (def.tools.has_value())
-            {
                 agent_obj["tools"] = *def.tools;
-            }
             if (def.model.has_value())
-            {
                 agent_obj["model"] = *def.model;
-            }
             agents_json[name] = agent_obj;
         }
         cmd.push_back("--agents");
@@ -416,47 +393,35 @@ std::string SubprocessCLITransport::find_cli(const std::optional<std::string>& h
     if (hint)
     {
         if (std::filesystem::exists(*hint))
-        {
             return *hint;
-        }
         throw CLINotFoundError("Claude Code not found at: " + *hint);
     }
 
     // Try PATH first
     if (auto path = subprocess::find_executable("claude"))
-    {
         return *path;
-    }
 
     // Common locations
     std::vector<std::filesystem::path> locations;
 
 #ifdef _WIN32
     if (const char* appdata = std::getenv("APPDATA"))
-    {
         locations.push_back(std::filesystem::path(appdata) / "npm" / "claude.cmd");
-    }
     if (const char* localappdata = std::getenv("LOCALAPPDATA"))
-    {
         locations.push_back(std::filesystem::path(localappdata) / "npm" / "claude.cmd");
-    }
 #else
     if (const char* home = std::getenv("HOME"))
     {
         locations.push_back(std::filesystem::path(home) / ".npm-global" / "bin" / "claude");
         locations.push_back(std::filesystem::path(home) / ".local" / "bin" / "claude");
-        locations.push_back(std::filesystem::path(home) / ".claude" / "local" / "claude");  // v0.1.8
+        locations.push_back(std::filesystem::path(home) / ".claude" / "local" / "claude"); // v0.1.8
     }
     locations.push_back("/usr/local/bin/claude");
 #endif
 
     for (const auto& loc : locations)
-    {
         if (std::filesystem::exists(loc))
-        {
             return loc.string();
-        }
-    }
 
     throw CLINotFoundError("Claude Code not found. Install with:\n"
                            "  npm install -g @anthropic-ai/claude-code\n");
@@ -479,9 +444,7 @@ void SubprocessCLITransport::check_cli_version()
         std::regex ver_re(R"((\d+)\.(\d+)\.(\d+))");
         if (std::regex_search(output, match, ver_re) && match.size() >= 4)
         {
-            auto to_int = [](const std::ssub_match& s) {
-                return std::stoi(s.str());
-            };
+            auto to_int = [](const std::ssub_match& s) { return std::stoi(s.str()); };
             int major = to_int(match[1]);
             int minor = to_int(match[2]);
             int patch = to_int(match[3]);
@@ -490,9 +453,12 @@ void SubprocessCLITransport::check_cli_version()
             const int REQ_MINOR = 0;
             const int REQ_PATCH = 0;
 
-            auto is_less = [&](int aM, int aN, int aP, int bM, int bN, int bP) {
-                if (aM != bM) return aM < bM;
-                if (aN != bN) return aN < bN;
+            auto is_less = [&](int aM, int aN, int aP, int bM, int bN, int bP)
+            {
+                if (aM != bM)
+                    return aM < bM;
+                if (aN != bN)
+                    return aN < bN;
                 return aP < bP;
             };
 
@@ -500,7 +466,8 @@ void SubprocessCLITransport::check_cli_version()
             {
                 std::ostringstream oss;
                 oss << "Claude Code CLI version " << major << "." << minor << "." << patch
-                    << " is too old; require >= " << REQ_MAJOR << "." << REQ_MINOR << "." << REQ_PATCH
+                    << " is too old; require >= " << REQ_MAJOR << "." << REQ_MINOR << "."
+                    << REQ_PATCH
                     << ".\nInstall or upgrade with:\n  npm install -g @anthropic-ai/claude-code\n";
                 throw CLIConnectionError(oss.str());
             }
@@ -523,9 +490,7 @@ void SubprocessCLITransport::check_cli_version()
 std::vector<Message> SubprocessCLITransport::read_messages()
 {
     if (!process_ || !ready_)
-    {
         throw CLIConnectionError("Not connected");
-    }
 
     std::vector<Message> all_messages;
 
@@ -539,9 +504,7 @@ std::vector<Message> SubprocessCLITransport::read_messages()
         size_t n = process_->stdout_pipe().read(buffer, sizeof(buffer));
 
         if (n == 0)
-        {
             break; // EOF
-        }
 
         std::string data(buffer, n);
         auto messages = parser_->add_data(data);
@@ -571,9 +534,7 @@ std::vector<Message> SubprocessCLITransport::read_messages()
 void SubprocessCLITransport::write_message(const std::string& json)
 {
     if (!process_ || !ready_)
-    {
         throw CLIConnectionError("Not connected");
-    }
 
     process_->stdin_pipe().write(json + "\n");
     process_->stdin_pipe().flush();
@@ -591,7 +552,8 @@ void SubprocessCLITransport::close()
         catch (const std::exception& e)
         {
             // Ignore errors during cleanup
-            std::cerr << "Warning: Failed to remove temp file " << temp_file << ": " << e.what() << std::endl;
+            std::cerr << "Warning: Failed to remove temp file " << temp_file << ": " << e.what()
+                      << std::endl;
         }
     }
     temp_files_.clear();
@@ -601,9 +563,7 @@ void SubprocessCLITransport::close()
     {
         stderr_stop_flag_ = true;
         if (stderr_thread_->joinable())
-        {
             stderr_thread_->join();
-        }
         stderr_thread_.reset();
     }
 
@@ -627,9 +587,7 @@ bool SubprocessCLITransport::is_ready() const
 void SubprocessCLITransport::stderr_reader()
 {
     if (!process_ || !options_.stderr_callback.has_value())
-    {
         return;
-    }
 
     try
     {
@@ -640,16 +598,12 @@ void SubprocessCLITransport::stderr_reader()
         {
             // Check if data is available (with timeout to allow checking stop flag)
             if (!stderr_pipe.has_data(100)) // 100ms timeout
-            {
                 continue;
-            }
 
             // Read available data
             size_t n = stderr_pipe.read(buffer, sizeof(buffer) - 1);
             if (n == 0)
-            {
                 break; // EOF
-            }
 
             // Null-terminate and process as string
             buffer[n] = '\0';

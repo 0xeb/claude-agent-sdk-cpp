@@ -1,5 +1,5 @@
-#include <gtest/gtest.h>
 #include <claude/mcp.hpp>
+#include <gtest/gtest.h>
 #include <nlohmann/json.hpp>
 
 using namespace claude::mcp;
@@ -78,8 +78,8 @@ TEST(McpTypeTraits, FunctionTraitsFunctionPointer)
 
 TEST(McpTool, BasicToolCreation)
 {
-    auto add = make_tool("add", "Add two numbers",
-                         [](double a, double b) -> double { return a + b; });
+    auto add =
+        make_tool("add", "Add two numbers", [](double a, double b) -> double { return a + b; });
 
     EXPECT_EQ(add.name(), "add");
     EXPECT_EQ(add.description(), "Add two numbers");
@@ -100,9 +100,7 @@ TEST(McpTool, BasicToolCreation)
 TEST(McpTool, ToolWithStrings)
 {
     auto greet = make_tool("greet", "Greet a user",
-                           [](std::string name) -> std::string {
-                               return "Hello, " + name + "!";
-                           });
+                           [](std::string name) -> std::string { return "Hello, " + name + "!"; });
 
     EXPECT_EQ(greet.name(), "greet");
 
@@ -115,10 +113,8 @@ TEST(McpTool, ToolWithStrings)
 
 TEST(McpTool, ToolWithMultipleTypes)
 {
-    auto mixed = make_tool("mixed", "Mixed types",
-                           [](int x, std::string s, bool b) -> double {
-                               return x * (b ? 2.0 : 1.0);
-                           });
+    auto mixed = make_tool("mixed", "Mixed types", [](int x, std::string s, bool b) -> double
+                           { return x * (b ? 2.0 : 1.0); });
 
     auto input_schema = mixed.input_schema();
     EXPECT_EQ(input_schema["properties"]["arg0"]["type"], "integer");
@@ -128,8 +124,7 @@ TEST(McpTool, ToolWithMultipleTypes)
 
 TEST(McpTool, ToolWithVoidReturn)
 {
-    auto noop = make_tool("noop", "No operation",
-                          []() -> void {});
+    auto noop = make_tool("noop", "No operation", []() -> void {});
 
     // Should work without errors
     EXPECT_EQ(noop.name(), "noop");
@@ -137,8 +132,8 @@ TEST(McpTool, ToolWithVoidReturn)
 
 TEST(McpTool, ToolInvocation)
 {
-    auto add = make_tool("add", "Add two numbers",
-                         [](double a, double b) -> double { return a + b; });
+    auto add =
+        make_tool("add", "Add two numbers", [](double a, double b) -> double { return a + b; });
 
     json args = {{"arg0", 5.5}, {"arg1", 3.2}};
     json result = add.invoke(args);
@@ -157,9 +152,7 @@ TEST(McpTool, ToolInvocation)
 TEST(McpTool, ToolInvocationString)
 {
     auto greet = make_tool("greet", "Greet a user",
-                           [](std::string name) -> std::string {
-                               return "Hello, " + name + "!";
-                           });
+                           [](std::string name) -> std::string { return "Hello, " + name + "!"; });
 
     json args = {{"arg0", "Alice"}};
     json result = greet.invoke(args);
@@ -172,8 +165,8 @@ TEST(McpTool, ToolInvocationString)
 TEST(McpTool, ToolInvocationVoid)
 {
     int counter = 0;
-    auto increment = make_tool("increment", "Increment counter",
-                               [&counter]() -> void { counter++; });
+    auto increment =
+        make_tool("increment", "Increment counter", [&counter]() -> void { counter++; });
 
     json args = json::object();
     json result = increment.invoke(args);
@@ -185,9 +178,9 @@ TEST(McpTool, ToolInvocationVoid)
 
 TEST(McpTool, CustomParameterNames)
 {
-    auto calc = make_tool("calc", "Calculate",
-                          [](double x, double y) -> double { return x * y; },
-                          std::vector<std::string>{"multiplier", "multiplicand"});
+    auto calc = make_tool(
+        "calc", "Calculate", [](double x, double y) -> double { return x * y; },
+        std::vector<std::string>{"multiplier", "multiplicand"});
 
     auto input_schema = calc.input_schema();
     EXPECT_TRUE(input_schema["properties"].contains("multiplier"));
@@ -208,8 +201,8 @@ TEST(McpTool, CustomParameterNames)
 
 TEST(McpServer, BasicServerCreation)
 {
-    auto add = make_tool("add", "Add two numbers",
-                         [](double a, double b) -> double { return a + b; });
+    auto add =
+        make_tool("add", "Add two numbers", [](double a, double b) -> double { return a + b; });
 
     auto multiply = make_tool("multiply", "Multiply two numbers",
                               [](double a, double b) -> double { return a * b; });
@@ -239,8 +232,8 @@ TEST(McpServer, InitializeRequest)
 
 TEST(McpServer, ToolsListRequest)
 {
-    auto add = make_tool("add", "Add two numbers",
-                         [](double a, double b) -> double { return a + b; });
+    auto add =
+        make_tool("add", "Add two numbers", [](double a, double b) -> double { return a + b; });
 
     auto greet = make_tool("greet", "Greet user",
                            [](std::string name) -> std::string { return "Hi " + name; });
@@ -278,8 +271,8 @@ TEST(McpServer, ToolsListRequest)
 
 TEST(McpServer, ToolCallRequest)
 {
-    auto add = make_tool("add", "Add two numbers",
-                         [](double a, double b) -> double { return a + b; });
+    auto add =
+        make_tool("add", "Add two numbers", [](double a, double b) -> double { return a + b; });
 
     auto server = create_server("calc", "1.0.0", add);
 
@@ -358,16 +351,13 @@ TEST(McpServer, ServerBuilder)
 TEST(McpIntegration, EndToEndWorkflow)
 {
     // Create tools
-    auto add = make_tool("add", "Add numbers",
-                         [](double a, double b) -> double { return a + b; });
+    auto add = make_tool("add", "Add numbers", [](double a, double b) -> double { return a + b; });
 
     auto multiply = make_tool("multiply", "Multiply numbers",
                               [](double a, double b) -> double { return a * b; });
 
     auto greet = make_tool("greet", "Greet user",
-                           [](std::string name) -> std::string {
-                               return "Hello, " + name + "!";
-                           });
+                           [](std::string name) -> std::string { return "Hello, " + name + "!"; });
 
     // Create server
     auto server_handler = create_server("testserver", "1.0.0", add, multiply, greet);
@@ -383,19 +373,19 @@ TEST(McpIntegration, EndToEndWorkflow)
     EXPECT_EQ(list_response["result"]["tools"].size(), 3);
 
     // Call add tool
-    json add_request = {{"jsonrpc", "2.0"},
-                        {"id", 3},
-                        {"method", "tools/call"},
-                        {"params", {{"name", "add"}, {"arguments", {{"arg0", 5.0}, {"arg1", 7.0}}}}}};
+    json add_request = {
+        {"jsonrpc", "2.0"},
+        {"id", 3},
+        {"method", "tools/call"},
+        {"params", {{"name", "add"}, {"arguments", {{"arg0", 5.0}, {"arg1", 7.0}}}}}};
     json add_response = server_handler(add_request);
     EXPECT_FALSE(add_response.contains("error"));
 
     // Call greet tool
-    json greet_request = {
-        {"jsonrpc", "2.0"},
-        {"id", 4},
-        {"method", "tools/call"},
-        {"params", {{"name", "greet"}, {"arguments", {{"arg0", "World"}}}}}};
+    json greet_request = {{"jsonrpc", "2.0"},
+                          {"id", 4},
+                          {"method", "tools/call"},
+                          {"params", {{"name", "greet"}, {"arguments", {{"arg0", "World"}}}}}};
     json greet_response = server_handler(greet_request);
     EXPECT_FALSE(greet_response.contains("error"));
     EXPECT_EQ(greet_response["result"]["content"][0]["text"], "Hello, World!");
@@ -404,7 +394,8 @@ TEST(McpIntegration, EndToEndWorkflow)
 TEST(McpIntegration, ComplexTypes)
 {
     auto array_sum = make_tool("array_sum", "Sum array of numbers",
-                               [](std::vector<double> numbers) -> double {
+                               [](std::vector<double> numbers) -> double
+                               {
                                    double sum = 0.0;
                                    for (double n : numbers)
                                        sum += n;

@@ -1,5 +1,5 @@
-#include <gtest/gtest.h>
 #include <claude/types.hpp>
+#include <gtest/gtest.h>
 
 using namespace claude;
 
@@ -38,4 +38,3 @@ TEST(ParityFields, StreamEventEventDictNormalization)
     EXPECT_EQ(d["index"], 3);
     EXPECT_EQ(d["delta"]["text"], "xy");
 }
-

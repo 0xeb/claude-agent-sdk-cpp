@@ -1,6 +1,6 @@
-#include <gtest/gtest.h>
 #include <claude/client.hpp>
 #include <claude/mcp.hpp>
+#include <gtest/gtest.h>
 
 using namespace claude;
 using json = nlohmann::json;

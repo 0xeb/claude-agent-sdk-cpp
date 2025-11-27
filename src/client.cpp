@@ -17,7 +17,8 @@
 namespace claude
 {
 
-namespace {
+namespace
+{
 int get_initialize_timeout_ms()
 {
     int initialize_timeout_ms = 60000;
@@ -27,9 +28,7 @@ int get_initialize_timeout_ms()
         {
             int parsed = std::stoi(env);
             if (parsed > initialize_timeout_ms)
-            {
                 initialize_timeout_ms = parsed;
-            }
         }
         catch (...)
         {
@@ -47,9 +46,7 @@ static json convert_hook_output_for_cli(const json& hook_output)
 {
     // Defensive: only process objects; return as-is for arrays/primitives
     if (!hook_output.is_object())
-    {
         return hook_output;
-    }
 
     json converted = json::object();
 
@@ -58,21 +55,15 @@ static json convert_hook_output_for_cli(const json& hook_output)
     {
         const std::string& key = it.key();
         if (key == "async_" || key == "continue_")
-        {
             continue;
-        }
         converted[key] = it.value();
     }
 
     // Map underscore variants if the standard key wasn't provided explicitly
     if (hook_output.contains("async_") && !converted.contains("async"))
-    {
         converted["async"] = hook_output.at("async_");
-    }
     if (hook_output.contains("continue_") && !converted.contains("continue"))
-    {
         converted["continue"] = hook_output.at("continue_");
-    }
 
     return converted;
 }
@@ -109,9 +100,7 @@ class MessageStream::Impl
         cv_.wait(lock, [this] { return !queue_.empty() || stopped_ || end_of_response_; });
 
         if (queue_.empty())
-        {
             return std::nullopt;
-        }
 
         Message msg = std::move(queue_.front());
         queue_.pop();
@@ -200,9 +189,7 @@ class ClaudeClient::Impl
         {
             running_ = false;
             if (reader_thread_.joinable())
-            {
                 reader_thread_.join();
-            }
         }
     }
 
@@ -246,16 +233,12 @@ class ClaudeClient::Impl
                     persistent_message_queue_->push_message(std::move(msg));
 
                     if (is_result)
-                    {
                         persistent_message_queue_->mark_end_of_response();
-                    }
                 }
 
                 // Small sleep to avoid busy waiting
                 if (messages.empty())
-                {
                     std::this_thread::sleep_for(std::chrono::milliseconds(10));
-                }
             }
         }
         catch (const std::exception&)
@@ -270,7 +253,8 @@ class ClaudeClient::Impl
 
     void initialize()
     {
-        // Determine initialize timeout from environment (CLAUDE_CODE_STREAM_CLOSE_TIMEOUT in ms, min 60000)
+        // Determine initialize timeout from environment (CLAUDE_CODE_STREAM_CLOSE_TIMEOUT in ms,
+        // min 60000)
         int initialize_timeout_ms = get_initialize_timeout_ms();
 
         // Send initialize control request
@@ -284,9 +268,7 @@ class ClaudeClient::Impl
             for (const auto& [event, matchers] : options_.hooks)
             {
                 if (matchers.empty())
-                {
                     continue;
-                }
 
                 json matchers_array = json::array();
 
@@ -307,19 +289,13 @@ class ClaudeClient::Impl
 
                     // Add matcher pattern if specified
                     if (matcher.matcher.has_value())
-                    {
                         matcher_entry["matcher"] = *matcher.matcher;
-                    }
                     else
-                    {
                         matcher_entry["matcher"] = nullptr;
-                    }
 
                     // Add timeout if specified
                     if (matcher.timeout.has_value())
-                    {
                         matcher_entry["timeout"] = *matcher.timeout;
-                    }
 
                     matchers_array.push_back(matcher_entry);
                 }
@@ -334,8 +310,8 @@ class ClaudeClient::Impl
         // Send initialize request and wait for response
         try
         {
-            initialization_result_ =
-                control_protocol_->send_request(write_func, "initialize", request_data, initialize_timeout_ms);
+            initialization_result_ = control_protocol_->send_request(
+                write_func, "initialize", request_data, initialize_timeout_ms);
             initialized_ = true;
         }
         catch (const std::exception&)
@@ -349,9 +325,7 @@ class ClaudeClient::Impl
     {
         // Extract request data
         if (!request.request.contains("subtype") || request.request_id.empty())
-        {
             return; // Malformed request
-        }
 
         std::string subtype = request.request.value("subtype", "");
 
@@ -379,15 +353,11 @@ class ClaudeClient::Impl
             try
             {
                 if (server_name.empty() || !mcp_message.is_object())
-                {
                     throw std::runtime_error("Missing server_name or message for MCP request");
-                }
 
                 auto it = options_.sdk_mcp_handlers.find(server_name);
                 if (it == options_.sdk_mcp_handlers.end())
-                {
                     throw std::runtime_error("No SDK MCP handler for server: " + server_name);
-                }
 
                 // Optional: enforce allowed_tools for tools/call
                 std::string method = mcp_message.value("method", "");
@@ -397,13 +367,18 @@ class ClaudeClient::Impl
                     std::string tool_name = params.value("name", "");
                     if (!options_.allowed_tools.empty())
                     {
-                        bool allowed = std::find(options_.allowed_tools.begin(), options_.allowed_tools.end(), tool_name) != options_.allowed_tools.end();
+                        bool allowed =
+                            std::find(options_.allowed_tools.begin(), options_.allowed_tools.end(),
+                                      tool_name) != options_.allowed_tools.end();
                         if (!allowed)
                         {
                             // Return JSON-RPC error response
-                            json error_resp = {{"jsonrpc", "2.0"},
-                                               {"id", mcp_message.value("id", nullptr)},
-                                               {"error", {{"code", -32603}, {"message", std::string("Tool not allowed: ") + tool_name}}}};
+                            json error_resp = {
+                                {"jsonrpc", "2.0"},
+                                {"id", mcp_message.value("id", nullptr)},
+                                {"error",
+                                 {{"code", -32603},
+                                  {"message", std::string("Tool not allowed: ") + tool_name}}}};
 
                             json success = {{"type", "control_response"},
                                             {"response",
@@ -453,12 +428,11 @@ class ClaudeClient::Impl
         if (it == hook_callbacks_.end())
         {
             // Callback not found - send error response
-            json error_response = {
-                {"type", "control_response"},
-                {"response",
-                 {{"subtype", "error"},
-                  {"request_id", request_id},
-                  {"error", "No hook callback found for ID: " + callback_id}}}};
+            json error_response = {{"type", "control_response"},
+                                   {"response",
+                                    {{"subtype", "error"},
+                                     {"request_id", request_id},
+                                     {"error", "No hook callback found for ID: " + callback_id}}}};
             send_control_response(error_response);
             return;
         }
@@ -472,7 +446,8 @@ class ClaudeClient::Impl
         // Send success response with hook output
         json success_response = {
             {"type", "control_response"},
-            {"response", {{"subtype", "success"}, {"request_id", request_id}, {"response", converted_output}}}};
+            {"response",
+             {{"subtype", "success"}, {"request_id", request_id}, {"response", converted_output}}}};
         send_control_response(success_response);
     }
 
@@ -484,7 +459,8 @@ class ClaudeClient::Impl
 
         // Parse permission suggestions from CLI
         ToolPermissionContext context;
-        if (request.contains("permission_suggestions") && request["permission_suggestions"].is_array())
+        if (request.contains("permission_suggestions") &&
+            request["permission_suggestions"].is_array())
         {
             for (const auto& suggestion_json : request["permission_suggestions"])
             {
@@ -499,7 +475,8 @@ class ClaudeClient::Impl
                     {
                         PermissionRuleValue rule;
                         rule.tool_name = rule_json.value("toolName", "");
-                        if (rule_json.contains("ruleContent") && !rule_json["ruleContent"].is_null())
+                        if (rule_json.contains("ruleContent") &&
+                            !rule_json["ruleContent"].is_null())
                         {
                             rule.rule_content = rule_json["ruleContent"].get<std::string>();
                         }
@@ -509,24 +486,19 @@ class ClaudeClient::Impl
                 }
 
                 if (suggestion_json.contains("behavior"))
-                {
                     suggestion.behavior = suggestion_json["behavior"].get<std::string>();
-                }
 
                 if (suggestion_json.contains("mode"))
-                {
                     suggestion.mode = suggestion_json["mode"].get<std::string>();
-                }
 
                 if (suggestion_json.contains("directories"))
                 {
-                    suggestion.directories = suggestion_json["directories"].get<std::vector<std::string>>();
+                    suggestion.directories =
+                        suggestion_json["directories"].get<std::vector<std::string>>();
                 }
 
                 if (suggestion_json.contains("destination"))
-                {
                     suggestion.destination = suggestion_json["destination"].get<std::string>();
-                }
 
                 context.suggestions.push_back(suggestion);
             }
@@ -554,22 +526,16 @@ class ClaudeClient::Impl
 
             // Add updatedInput if provided, otherwise use original input
             if (allow.updated_input.has_value())
-            {
                 response_data["updatedInput"] = *allow.updated_input;
-            }
             else
-            {
                 response_data["updatedInput"] = input;
-            }
 
             // Add updated permissions if provided
             if (allow.updated_permissions.has_value())
             {
                 json permissions_array = json::array();
                 for (const auto& perm : *allow.updated_permissions)
-                {
                     permissions_array.push_back(perm.to_json());
-                }
                 response_data["updatedPermissions"] = permissions_array;
             }
         }
@@ -581,29 +547,21 @@ class ClaudeClient::Impl
 
             // Add interrupt flag if set
             if (deny.interrupt)
-            {
                 response_data["interrupt"] = deny.interrupt;
-            }
         }
 
         // Send success response with proper envelope structure
         json success_response = {
             {"type", "control_response"},
-            {"response", {
-                {"subtype", "success"},
-                {"request_id", request_id},
-                {"response", response_data}
-            }}
-        };
+            {"response",
+             {{"subtype", "success"}, {"request_id", request_id}, {"response", response_data}}}};
         send_control_response(success_response);
     }
 
     void send_control_response(const json& response)
     {
         if (!transport_ || !transport_->is_running())
-        {
             return; // Can't send if transport is not running
-        }
 
         std::string line = response.dump() + "\n";
         transport_->write(line);
@@ -617,14 +575,14 @@ class ClaudeClient::Impl
 ClaudeClient::ClaudeClient(const ClaudeOptions& options) : impl_(std::make_unique<Impl>(options)) {}
 
 ClaudeClient::ClaudeClient(const ClaudeOptions& options, std::unique_ptr<Transport> transport)
-    : impl_(std::make_unique<Impl>(options, std::move(transport))) {}
+    : impl_(std::make_unique<Impl>(options, std::move(transport)))
+{
+}
 
 ClaudeClient::~ClaudeClient()
 {
     if (impl_)
-    {
         disconnect();
-    }
 }
 
 ClaudeClient::ClaudeClient(ClaudeClient&&) noexcept = default;
@@ -633,9 +591,7 @@ ClaudeClient& ClaudeClient::operator=(ClaudeClient&&) noexcept = default;
 void ClaudeClient::connect()
 {
     if (impl_->connected_)
-    {
         return;
-    }
 
     // Connect transport
     impl_->transport_->connect();
@@ -652,9 +608,7 @@ void ClaudeClient::connect()
 void ClaudeClient::disconnect()
 {
     if (!impl_ || !impl_->connected_)
-    {
         return;
-    }
 
     // Stop reader thread first
     impl_->stop_reader();
@@ -677,18 +631,14 @@ bool ClaudeClient::is_connected() const
 long ClaudeClient::get_pid() const
 {
     if (impl_ && impl_->transport_)
-    {
         return impl_->transport_->get_pid();
-    }
     return 0;
 }
 
 void ClaudeClient::send_query(const std::string& prompt, const std::string& session_id)
 {
     if (!is_connected())
-    {
         throw CLIConnectionError("Not connected to Claude CLI");
-    }
 
     // Reset the end_of_response flag for this new query
     impl_->persistent_message_queue_->reset_for_new_query();
@@ -699,9 +649,7 @@ void ClaudeClient::send_query(const std::string& prompt, const std::string& sess
                 {"parent_tool_use_id", nullptr}};
 
     if (!session_id.empty())
-    {
         msg["session_id"] = session_id;
-    }
 
     // Write to transport
     std::string json_str = msg.dump() + "\n";
@@ -711,9 +659,7 @@ void ClaudeClient::send_query(const std::string& prompt, const std::string& sess
 MessageStream ClaudeClient::receive_messages()
 {
     if (!is_connected())
-    {
         throw CLIConnectionError("Not connected to Claude CLI");
-    }
 
     // Return a stream that references the persistent message queue
     MessageStream stream;
@@ -730,9 +676,7 @@ std::vector<Message> ClaudeClient::receive_response()
     {
         messages.push_back(msg);
         if (is_result_message(msg))
-        {
             break;
-        }
     }
 
     return messages;
@@ -741,9 +685,7 @@ std::vector<Message> ClaudeClient::receive_response()
 void ClaudeClient::interrupt()
 {
     if (!is_connected())
-    {
         throw CLIConnectionError("Not connected to Claude CLI");
-    }
 
     // Create write function that captures the transport
     auto write_func = [this](const std::string& data) { impl_->transport_->write(data); };
@@ -755,9 +697,7 @@ void ClaudeClient::interrupt()
 void ClaudeClient::set_permission_mode(const std::string& mode)
 {
     if (!is_connected())
-    {
         throw CLIConnectionError("Not connected to Claude CLI");
-    }
 
     // Create write function that captures the transport
     auto write_func = [this](const std::string& data) { impl_->transport_->write(data); };
@@ -769,9 +709,7 @@ void ClaudeClient::set_permission_mode(const std::string& mode)
 void ClaudeClient::set_model(const std::string& model)
 {
     if (!is_connected())
-    {
         throw CLIConnectionError("Not connected to Claude CLI");
-    }
 
     // Create write function that captures the transport
     auto write_func = [this](const std::string& data) { impl_->transport_->write(data); };
@@ -783,9 +721,7 @@ void ClaudeClient::set_model(const std::string& model)
 std::optional<json> ClaudeClient::get_server_info() const
 {
     if (!impl_ || !impl_->connected_ || !impl_->initialized_)
-    {
         return std::nullopt;
-    }
     return impl_->initialization_result_;
 }
 
@@ -846,17 +782,13 @@ void MessageStream::Iterator::fetch_next()
 
     current_ = stream_->get_next();
     if (!current_)
-    {
         is_end_ = true;
-    }
 }
 
 MessageStream::Iterator::reference MessageStream::Iterator::operator*() const
 {
     if (!current_)
-    {
         throw std::runtime_error("Dereferencing end iterator");
-    }
     return *current_;
 }
 

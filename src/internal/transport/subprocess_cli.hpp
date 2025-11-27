@@ -4,8 +4,8 @@
 #include "../message_parser.hpp"
 #include "../subprocess/process.hpp"
 
-#include <claude/types.hpp>
 #include <atomic>
+#include <claude/types.hpp>
 #include <memory>
 #include <optional>
 #include <string>

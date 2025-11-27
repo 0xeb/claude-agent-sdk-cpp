@@ -59,11 +59,12 @@ class JSONDecodeError : public ClaudeError
 class MessageParseError : public ClaudeError
 {
   public:
-    explicit MessageParseError(const std::string& message)
-        : ClaudeError(message), data_(nullptr) {}
+    explicit MessageParseError(const std::string& message) : ClaudeError(message), data_(nullptr) {}
 
     MessageParseError(const std::string& message, const nlohmann::json& data)
-        : ClaudeError(message), data_(std::make_shared<nlohmann::json>(data)) {}
+        : ClaudeError(message), data_(std::make_shared<nlohmann::json>(data))
+    {
+    }
 
     // Get the optional data associated with the parse error
     const nlohmann::json* data() const

@@ -69,12 +69,8 @@ TEST(ClientIntegrationTest, DISABLED_MultipleQueries)
 
     bool found_result1 = false;
     for (const auto& msg : response1)
-    {
         if (is_result_message(msg))
-        {
             found_result1 = true;
-        }
-    }
     EXPECT_TRUE(found_result1);
 
     // Second query (same session - should remember context)
@@ -84,12 +80,8 @@ TEST(ClientIntegrationTest, DISABLED_MultipleQueries)
 
     bool found_assistant2 = false;
     for (const auto& msg : response2)
-    {
         if (is_assistant_message(msg))
-        {
             found_assistant2 = true;
-        }
-    }
     EXPECT_TRUE(found_assistant2);
 
     client.disconnect();
@@ -149,9 +141,7 @@ TEST(ClientIntegrationTest, DISABLED_MessageStreamIterator)
         const auto& msg = *it;
 
         if (is_result_message(msg))
-        {
             break;
-        }
 
         ++it;
     }
@@ -215,13 +205,9 @@ TEST(ClientIntegrationTest, DISABLED_ReceiveResponseConvenience)
     for (const auto& msg : messages)
     {
         if (is_assistant_message(msg))
-        {
             found_assistant = true;
-        }
         if (is_result_message(msg))
-        {
             found_result = true;
-        }
     }
 
     EXPECT_TRUE(found_assistant);

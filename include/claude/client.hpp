@@ -1,8 +1,8 @@
 #ifndef CLAUDE_CLIENT_HPP
 #define CLAUDE_CLIENT_HPP
 
-#include <claude/types.hpp>
 #include <claude/transport.hpp>
+#include <claude/types.hpp>
 #include <memory>
 #include <optional>
 #include <string>

@@ -241,7 +241,7 @@ TEST(TypesTest, ClaudeOptionsSystemPromptAppend)
     opts.system_prompt_append = "Always end your response with a fun fact.";
 
     EXPECT_EQ(opts.system_prompt_append, "Always end your response with a fun fact.");
-    EXPECT_TRUE(opts.system_prompt.empty());  // system_prompt and append are mutually exclusive
+    EXPECT_TRUE(opts.system_prompt.empty()); // system_prompt and append are mutually exclusive
 
     // Test that both fields can be set independently (append takes precedence in transport)
     opts.system_prompt = "Custom prompt";

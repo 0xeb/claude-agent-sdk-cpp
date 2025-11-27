@@ -28,7 +28,8 @@ class SubprocessTransport : public Transport
 {
   public:
     explicit SubprocessTransport(const ClaudeOptions& options, bool streaming_mode = true);
-    SubprocessTransport(const std::string& prompt, const ClaudeOptions& options); // One-shot constructor
+    SubprocessTransport(const std::string& prompt,
+                        const ClaudeOptions& options); // One-shot constructor
     ~SubprocessTransport() override;
 
     // Transport interface

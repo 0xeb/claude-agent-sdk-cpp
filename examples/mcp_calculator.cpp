@@ -25,49 +25,50 @@ using namespace claude::mcp;
 
 auto add_numbers()
 {
-    return make_tool("add", "Add two numbers",
-                     [](double a, double b) -> std::string {
-                         double result = a + b;
-                         return std::to_string(a) + " + " + std::to_string(b) + " = " +
-                                std::to_string(result);
-                     },
-                     std::vector<std::string>{"a", "b"});
+    return make_tool(
+        "add", "Add two numbers",
+        [](double a, double b) -> std::string
+        {
+            double result = a + b;
+            return std::to_string(a) + " + " + std::to_string(b) + " = " + std::to_string(result);
+        },
+        std::vector<std::string>{"a", "b"});
 }
 
 auto subtract_numbers()
 {
-    return make_tool("subtract", "Subtract one number from another",
-                     [](double a, double b) -> std::string {
-                         double result = a - b;
-                         return std::to_string(a) + " - " + std::to_string(b) + " = " +
-                                std::to_string(result);
-                     },
-                     std::vector<std::string>{"a", "b"});
+    return make_tool(
+        "subtract", "Subtract one number from another",
+        [](double a, double b) -> std::string
+        {
+            double result = a - b;
+            return std::to_string(a) + " - " + std::to_string(b) + " = " + std::to_string(result);
+        },
+        std::vector<std::string>{"a", "b"});
 }
 
 auto multiply_numbers()
 {
-    return make_tool("multiply", "Multiply two numbers",
-                     [](double a, double b) -> std::string {
-                         double result = a * b;
-                         return std::to_string(a) + " × " + std::to_string(b) + " = " +
-                                std::to_string(result);
-                     },
-                     std::vector<std::string>{"a", "b"});
+    return make_tool(
+        "multiply", "Multiply two numbers",
+        [](double a, double b) -> std::string
+        {
+            double result = a * b;
+            return std::to_string(a) + " × " + std::to_string(b) + " = " + std::to_string(result);
+        },
+        std::vector<std::string>{"a", "b"});
 }
 
 auto divide_numbers()
 {
     return make_tool(
         "divide", "Divide one number by another",
-        [](double a, double b) -> std::string {
+        [](double a, double b) -> std::string
+        {
             if (b == 0.0)
-            {
                 throw std::runtime_error("Error: Division by zero is not allowed");
-            }
             double result = a / b;
-            return std::to_string(a) + " ÷ " + std::to_string(b) + " = " +
-                   std::to_string(result);
+            return std::to_string(a) + " ÷ " + std::to_string(b) + " = " + std::to_string(result);
         },
         std::vector<std::string>{"a", "b"});
 }
@@ -76,7 +77,8 @@ auto square_root()
 {
     return make_tool(
         "sqrt", "Calculate square root",
-        [](double n) -> std::string {
+        [](double n) -> std::string
+        {
             if (n < 0)
             {
                 throw std::runtime_error("Error: Cannot calculate square root of negative "
@@ -91,13 +93,15 @@ auto square_root()
 
 auto power()
 {
-    return make_tool("power", "Raise a number to a power",
-                     [](double base, double exponent) -> std::string {
-                         double result = std::pow(base, exponent);
-                         return std::to_string(base) + "^" + std::to_string(exponent) + " = " +
-                                std::to_string(result);
-                     },
-                     std::vector<std::string>{"base", "exponent"});
+    return make_tool(
+        "power", "Raise a number to a power",
+        [](double base, double exponent) -> std::string
+        {
+            double result = std::pow(base, exponent);
+            return std::to_string(base) + "^" + std::to_string(exponent) + " = " +
+                   std::to_string(result);
+        },
+        std::vector<std::string>{"base", "exponent"});
 }
 
 // Display message content in a clean format
@@ -118,9 +122,7 @@ void display_message(const Message& msg)
                 const auto& tool_use = std::get<ToolUseBlock>(block);
                 std::cout << "Using tool: " << tool_use.name << "\n";
                 if (!tool_use.input.is_null())
-                {
                     std::cout << "  Input: " << tool_use.input.dump() << "\n";
-                }
             }
         }
     }
@@ -130,9 +132,7 @@ void display_message(const Message& msg)
         std::cout << "Result ended\n";
         double cost = result.total_cost_usd();
         if (cost > 0.0)
-        {
             std::cout << "Cost: $" << std::fixed << std::setprecision(6) << cost << "\n";
-        }
     }
     // Ignore system messages
 }
@@ -185,9 +185,7 @@ int main()
 
                 // Break after result message
                 if (is_result_message(message))
-                {
                     break;
-                }
             }
 
             client.disconnect();

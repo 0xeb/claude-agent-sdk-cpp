@@ -3,28 +3,27 @@
  * @brief Implementation of SessionWrapper with message persistence
  */
 
+#include <chrono>
 #include <claude/ext/session_storage.hpp>
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
 #include <sstream>
-#include <chrono>
 
 namespace fs = std::filesystem;
 using json = nlohmann::json;
 
-namespace claude {
-namespace ext {
+namespace claude
+{
+namespace ext
+{
 
 // ============================================================================
 // SessionWrapper Implementation
 // ============================================================================
 
 SessionWrapper::SessionWrapper(const ClaudeOptions& opts, const std::string& storage_dir)
-    : client_(opts)
-    , opts_(opts)
-    , storage_dir_(storage_dir)
-    , connected_(false)
+    : client_(opts), opts_(opts), storage_dir_(storage_dir), connected_(false)
 {
     // Create storage directory if it doesn't exist
     fs::create_directories(storage_dir_);
@@ -34,9 +33,12 @@ SessionWrapper::~SessionWrapper()
 {
     if (connected_ && !current_session_id_.empty())
     {
-        try {
+        try
+        {
             save_history();
-        } catch (...) {
+        }
+        catch (...)
+        {
             // Suppress exceptions in destructor
         }
     }
@@ -51,9 +53,7 @@ void SessionWrapper::connect()
 void SessionWrapper::disconnect()
 {
     if (connected_ && !current_session_id_.empty())
-    {
         save_history();
-    }
     client_.disconnect();
     connected_ = false;
 }
@@ -67,19 +67,11 @@ bool SessionWrapper::is_connected() const
 // Message Iterator Implementation
 // ============================================================================
 
-SessionWrapper::MessageIterator::MessageIterator()
-    : wrapper_(nullptr)
-    , inner_()
-    , stored_(false)
-{
-}
+SessionWrapper::MessageIterator::MessageIterator() : wrapper_(nullptr), inner_(), stored_(false) {}
 
-SessionWrapper::MessageIterator::MessageIterator(
-    SessionWrapper* wrapper,
-    MessageStream::Iterator it)
-    : wrapper_(wrapper)
-    , inner_(it)
-    , stored_(false)
+SessionWrapper::MessageIterator::MessageIterator(SessionWrapper* wrapper,
+                                                 MessageStream::Iterator it)
+    : wrapper_(wrapper), inner_(it), stored_(false)
 {
 }
 
@@ -97,7 +89,7 @@ const Message& SessionWrapper::MessageIterator::operator*() const
 SessionWrapper::MessageIterator& SessionWrapper::MessageIterator::operator++()
 {
     ++inner_;
-    stored_ = false;  // Reset for next message
+    stored_ = false; // Reset for next message
     return *this;
 }
 
@@ -120,15 +112,11 @@ std::vector<Message> SessionWrapper::load_history(const std::string& session_id)
     std::string filename = storage_dir_ + "/" + session_id + ".json";
 
     if (!fs::exists(filename))
-    {
         throw std::runtime_error("Session file not found: " + filename);
-    }
 
     std::ifstream file(filename);
     if (!file)
-    {
         throw std::runtime_error("Failed to open session file: " + filename);
-    }
 
     json session_data;
     file >> session_data;
@@ -138,9 +126,7 @@ std::vector<Message> SessionWrapper::load_history(const std::string& session_id)
     // Deserialize messages
     messages_.clear();
     for (const auto& msg_json : session_data["messages"])
-    {
         messages_.push_back(json_to_message(msg_json));
-    }
 
     return messages_;
 }
@@ -161,18 +147,14 @@ void SessionWrapper::save_history()
     // Serialize messages
     json messages_json = json::array();
     for (const auto& msg : messages_)
-    {
         messages_json.push_back(message_to_json(msg));
-    }
     session_data["messages"] = messages_json;
 
     // Write to file
     std::string filename = storage_dir_ + "/" + current_session_id_ + ".json";
     std::ofstream file(filename);
     if (!file)
-    {
         throw std::runtime_error("Failed to open session file: " + filename);
-    }
 
     file << std::setw(2) << session_data << std::endl;
 }
@@ -185,12 +167,8 @@ std::vector<std::string> SessionWrapper::list_sessions() const
         return sessions;
 
     for (const auto& entry : fs::directory_iterator(storage_dir_))
-    {
         if (entry.path().extension() == ".json")
-        {
             sessions.push_back(entry.path().stem().string());
-        }
-    }
 
     return sessions;
 }
@@ -209,9 +187,7 @@ void SessionWrapper::resume(const std::string& session_id)
 
     // Recreate client with resume options
     if (connected_)
-    {
         client_.disconnect();
-    }
 
     client_ = ClaudeClient(opts_);
     client_.connect();
@@ -315,39 +291,30 @@ json SessionWrapper::content_to_json(const std::vector<ContentBlock>& content) c
         if (std::holds_alternative<TextBlock>(block))
         {
             const auto& text = std::get<TextBlock>(block);
-            blocks.push_back({
-                {"type", "text"},
-                {"text", text.text}
-            });
+            blocks.push_back({{"type", "text"}, {"text", text.text}});
         }
         else if (std::holds_alternative<ThinkingBlock>(block))
         {
             const auto& thinking = std::get<ThinkingBlock>(block);
-            blocks.push_back({
-                {"type", "thinking"},
-                {"thinking", thinking.thinking},
-                {"signature", thinking.signature}
-            });
+            blocks.push_back({{"type", "thinking"},
+                              {"thinking", thinking.thinking},
+                              {"signature", thinking.signature}});
         }
         else if (std::holds_alternative<ToolUseBlock>(block))
         {
             const auto& tool_use = std::get<ToolUseBlock>(block);
-            blocks.push_back({
-                {"type", "tool_use"},
-                {"id", tool_use.id},
-                {"name", tool_use.name},
-                {"input", tool_use.input}
-            });
+            blocks.push_back({{"type", "tool_use"},
+                              {"id", tool_use.id},
+                              {"name", tool_use.name},
+                              {"input", tool_use.input}});
         }
         else if (std::holds_alternative<ToolResultBlock>(block))
         {
             const auto& tool_result = std::get<ToolResultBlock>(block);
-            json block_json = {
-                {"type", "tool_result"},
-                {"tool_use_id", tool_result.tool_use_id},
-                {"content", tool_result.content},
-                {"is_error", tool_result.is_error}
-            };
+            json block_json = {{"type", "tool_result"},
+                               {"tool_use_id", tool_result.tool_use_id},
+                               {"content", tool_result.content},
+                               {"is_error", tool_result.is_error}};
 
             blocks.push_back(block_json);
         }

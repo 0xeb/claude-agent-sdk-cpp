@@ -1,18 +1,19 @@
 #include <chrono>
+#include <claude/client.hpp>
 #include <claude/errors.hpp>
 #include <claude/protocol/control.hpp>
-#include <claude/client.hpp>
+#include <cstdlib>
 #include <gtest/gtest.h>
 #include <set>
 #include <thread>
-#include <cstdlib>
 
 using namespace claude::protocol;
 
-namespace claude {
+namespace claude
+{
 // Provided by client.cpp for testing
 int claude_test_get_initialize_timeout_ms();
-}
+} // namespace claude
 
 static void set_env_ms(const char* key, const char* value)
 {
@@ -84,7 +85,7 @@ TEST(ControlProtocolUnitTest, HandleSuccessResponse)
             try
             {
                 claude::json result = protocol.send_request(write_func, "interrupt", {},
-                                                              100 // Short timeout for test
+                                                            100 // Short timeout for test
                 );
                 // Should not reach here in this test (timeout)
             }
@@ -198,9 +199,7 @@ TEST(ControlProtocolUnitTest, MultipleRequests)
 
     // Wait for all threads to finish
     for (auto& thread : threads)
-    {
         thread.join();
-    }
 
     // All request IDs should be unique
     std::set<std::string> unique_ids(request_ids.begin(), request_ids.end());
