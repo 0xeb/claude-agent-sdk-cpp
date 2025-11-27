@@ -1,11 +1,27 @@
 #include <chrono>
 #include <claude/errors.hpp>
 #include <claude/protocol/control.hpp>
+#include <claude/client.hpp>
 #include <gtest/gtest.h>
 #include <set>
 #include <thread>
+#include <cstdlib>
 
 using namespace claude::protocol;
+
+namespace claude {
+// Provided by client.cpp for testing
+int claude_test_get_initialize_timeout_ms();
+}
+
+static void set_env_ms(const char* key, const char* value)
+{
+#if defined(_WIN32)
+    _putenv_s(key, value);
+#else
+    setenv(key, value, 1);
+#endif
+}
 
 TEST(ControlProtocolUnitTest, GenerateRequestId)
 {
@@ -123,6 +139,28 @@ TEST(ControlProtocolUnitTest, RequestIdIncremental)
     // Counters should increment
     EXPECT_EQ(counter2, counter1 + 1);
     EXPECT_EQ(counter3, counter2 + 1);
+}
+
+TEST(ControlProtocolUnitTest, InitializeTimeoutEnvOverrideRespectsMinimum)
+{
+    // Lower than default should clamp to 60000
+    set_env_ms("CLAUDE_CODE_STREAM_CLOSE_TIMEOUT", "1000");
+    EXPECT_EQ(claude::claude_test_get_initialize_timeout_ms(), 60000);
+
+    // Higher than default should be honored
+    set_env_ms("CLAUDE_CODE_STREAM_CLOSE_TIMEOUT", "120000");
+    EXPECT_EQ(claude::claude_test_get_initialize_timeout_ms(), 120000);
+
+    // Invalid values fall back to default
+    set_env_ms("CLAUDE_CODE_STREAM_CLOSE_TIMEOUT", "not_a_number");
+    EXPECT_EQ(claude::claude_test_get_initialize_timeout_ms(), 60000);
+}
+
+TEST(ControlProtocolUnitTest, HookMatcherAcceptsFractionalTimeout)
+{
+    claude::HookMatcher matcher{"Bash", {}, 0.5};
+    ASSERT_TRUE(matcher.timeout.has_value());
+    EXPECT_NEAR(*matcher.timeout, 0.5, 1e-9);
 }
 
 TEST(ControlProtocolUnitTest, MultipleRequests)
