@@ -422,7 +422,8 @@ struct ClaudeOptions
     std::optional<double> max_budget_usd; // v0.1.6: limit total cost in USD
     std::optional<std::string> working_directory;
     std::map<std::string, std::string> environment;
-    bool inherit_environment = true; // If false, do not inherit parent environment when spawning CLI
+    bool inherit_environment =
+        true; // If false, do not inherit parent environment when spawning CLI
     // Optional explicit path to the Claude Code CLI executable.
     // If empty, SDK searches PATH as usual.
     std::string cli_path;

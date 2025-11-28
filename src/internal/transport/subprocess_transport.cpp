@@ -8,8 +8,8 @@
 #include <fstream>
 #include <iostream>
 #include <nlohmann/json.hpp>
-#include <regex>
 #include <random>
+#include <regex>
 #include <sstream>
 
 #ifdef _WIN32
@@ -44,7 +44,8 @@ std::string write_agents_temp_file(const std::string& contents,
 {
     namespace fs = std::filesystem;
     // Manual unique path to avoid dependency on std::filesystem::unique_path
-    auto make_name = [] {
+    auto make_name = []
+    {
         std::random_device rd;
         std::mt19937 gen(rd());
         std::uniform_int_distribution<int> dist(0, 15);
@@ -552,9 +553,8 @@ std::vector<std::string> SubprocessTransport::build_command() const
 
 std::string SubprocessTransport::find_cli() const
 {
-    const bool require_explicit =
-        options_.require_explicit_cli ||
-        (std::getenv("CLAUDE_AGENT_SDK_REQUIRE_EXPLICIT_CLI") != nullptr);
+    const bool require_explicit = options_.require_explicit_cli ||
+                                  (std::getenv("CLAUDE_AGENT_SDK_REQUIRE_EXPLICIT_CLI") != nullptr);
 
     // If user provided explicit CLI path, prefer it
     if (!options_.cli_path.empty())

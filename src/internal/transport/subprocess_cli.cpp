@@ -7,8 +7,8 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
-#include <regex>
 #include <random>
+#include <regex>
 #include <sstream>
 
 namespace claude
@@ -31,7 +31,8 @@ std::string write_agents_temp_file(const std::string& contents,
                                    std::vector<std::string>& temp_files)
 {
     namespace fs = std::filesystem;
-    auto make_name = [] {
+    auto make_name = []
+    {
         std::random_device rd;
         std::mt19937 gen(rd());
         std::uniform_int_distribution<int> dist(0, 15);
@@ -412,9 +413,8 @@ std::vector<std::string> SubprocessCLITransport::build_command()
 
 std::string SubprocessCLITransport::find_cli(const std::optional<std::string>& hint)
 {
-    const bool require_explicit =
-        options_.require_explicit_cli ||
-        (std::getenv("CLAUDE_AGENT_SDK_REQUIRE_EXPLICIT_CLI") != nullptr);
+    const bool require_explicit = options_.require_explicit_cli ||
+                                  (std::getenv("CLAUDE_AGENT_SDK_REQUIRE_EXPLICIT_CLI") != nullptr);
 
     if (hint)
     {
