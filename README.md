@@ -144,7 +144,10 @@ Notes:
 - Tool control: `allowed_tools`, `disallowed_tools`.
 - Permission modes: `"default"`, `"acceptEdits"`, `"plan"`, `"bypassPermissions"`.
 - Session management: `continue_conversation`, `resume`.
-- CLI options: `cli_path`, `working_directory`, `include_partial_messages`, `extra_args`.
+- CLI options: `cli_path`, `working_directory`, `include_partial_messages`, `extra_args`, and
+  hardening flags: `require_explicit_cli` (or `CLAUDE_AGENT_SDK_REQUIRE_EXPLICIT_CLI`) to disable
+  PATH/home discovery, and `inherit_environment` (or `CLAUDE_AGENT_SDK_STRIP_ENV`) to prevent
+  forwarding the parent environment to the CLI.
 - Observability: `stderr_callback`, buffer limits, etc.
 
 See `include/claude/types.hpp` and `docs/api-reference.md` for full details.

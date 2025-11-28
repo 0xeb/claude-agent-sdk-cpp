@@ -288,37 +288,47 @@ void Process::spawn(const std::string& executable, const std::vector<std::string
     std::string cmdline_str = cmdline.str();
 
     // Build environment block
-    // Always inherit parent environment and merge with custom variables
+    // If inherit_environment is false, do not pull parent environment; use only provided vars.
     std::string env_block;
-    if (!options.environment.empty())
+    bool provide_env_block = !options.inherit_environment || !options.environment.empty();
+    if (provide_env_block)
     {
-        // Get current environment
-        char* env_strings = GetEnvironmentStringsA();
-        if (env_strings)
+        // Start with either inherited environment (if allowed) or an empty map.
+        std::map<std::string, std::string> env_map;
+
+        if (options.inherit_environment)
         {
-            // Parse existing environment into a map
-            std::map<std::string, std::string> env_map;
-
-            char* current = env_strings;
-            while (*current != '\0')
+            char* env_strings = GetEnvironmentStringsA();
+            if (env_strings)
             {
-                std::string entry(current);
-                size_t eq_pos = entry.find('=');
-                if (eq_pos != std::string::npos && eq_pos > 0)
+                char* current = env_strings;
+                while (*current != '\0')
                 {
-                    std::string key = entry.substr(0, eq_pos);
-                    std::string value = entry.substr(eq_pos + 1);
-                    env_map[key] = value;
+                    std::string entry(current);
+                    size_t eq_pos = entry.find('=');
+                    if (eq_pos != std::string::npos && eq_pos > 0)
+                    {
+                        std::string key = entry.substr(0, eq_pos);
+                        std::string value = entry.substr(eq_pos + 1);
+                        env_map[key] = value;
+                    }
+                    current += entry.length() + 1;
                 }
-                current += entry.length() + 1;
+                FreeEnvironmentStringsA(env_strings);
             }
-            FreeEnvironmentStringsA(env_strings);
+        }
 
-            // Merge with custom environment (custom variables override)
-            for (const auto& [key, value] : options.environment)
-                env_map[key] = value;
+        // Merge with custom environment (custom variables override inherited when present)
+        for (const auto& [key, value] : options.environment)
+            env_map[key] = value;
 
-            // Build environment block from merged map
+        if (env_map.empty())
+        {
+            // Empty block still needs double-null terminator to disable inheritance
+            env_block.push_back('\0');
+        }
+        else
+        {
             for (const auto& [key, value] : env_map)
                 env_block += key + "=" + value + '\0';
             env_block += '\0';
@@ -345,7 +355,7 @@ void Process::spawn(const std::string& executable, const std::vector<std::string
         nullptr,                                // Thread security attributes
         TRUE,                                   // Inherit handles
         0,                                      // Creation flags
-        env_block.empty() ? nullptr : const_cast<char*>(env_block.data()), // Environment
+        provide_env_block ? const_cast<char*>(env_block.data()) : nullptr, // Environment
         options.working_directory.empty() ? nullptr : options.working_directory.c_str(),
         &si, // Startup info
         &pi  // Process information

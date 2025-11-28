@@ -17,3 +17,12 @@ TEST(TransportCliPathTest, InvalidCliPathRaisesError)
     auto transport = create_subprocess_transport(opts);
     EXPECT_THROW(transport->connect(), CLINotFoundError);
 }
+
+TEST(TransportCliPathTest, RequireExplicitCliWithoutPathFailsFast)
+{
+    ClaudeOptions opts;
+    opts.require_explicit_cli = true;
+    // No cli_path and no env override; should fail immediately without PATH probing.
+    auto transport = create_subprocess_transport(opts);
+    EXPECT_THROW(transport->connect(), CLINotFoundError);
+}
