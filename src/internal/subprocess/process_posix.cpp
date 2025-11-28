@@ -339,7 +339,7 @@ void Process::spawn(const std::string& executable, const std::vector<std::string
         // Optionally strip inherited environment before applying overrides.
         if (!options.inherit_environment)
         {
-#if defined(__APPLE__) || defined(__linux__)
+#if defined(__linux__) && defined(_GNU_SOURCE)
             clearenv();
 #else
             // Fallback: best-effort clearing by resetting environ
