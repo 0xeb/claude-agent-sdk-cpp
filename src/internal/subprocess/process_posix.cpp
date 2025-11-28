@@ -17,6 +17,9 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+// Global environ pointer for environment manipulation (needed for macOS)
+extern "C" char** environ;
+
 namespace claude
 {
 namespace subprocess
@@ -343,7 +346,6 @@ void Process::spawn(const std::string& executable, const std::vector<std::string
             clearenv();
 #else
             // Fallback: best-effort clearing by resetting environ
-            extern char** environ;
             if (environ)
                 environ[0] = nullptr;
 #endif
