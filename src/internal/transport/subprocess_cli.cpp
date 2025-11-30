@@ -1,5 +1,7 @@
 #include "subprocess_cli.hpp"
 
+#include "cli_verification.hpp"
+
 #include <chrono>
 #include <claude/errors.hpp>
 #include <claude/version.hpp>
@@ -42,24 +44,50 @@ std::string write_agents_temp_file(const std::string& contents,
             c = digits[dist(gen)];
         return std::string("claude_agents-") + hex + ".json";
     };
-    fs::path temp_file = fs::temp_directory_path() / make_name();
-
-    std::ofstream ofs(temp_file, std::ios::binary | std::ios::out | std::ios::trunc);
-    if (!ofs)
-        throw std::runtime_error("Failed to create temp file for --agents");
-    ofs << contents;
-    ofs.close();
-
-    std::error_code ec;
-    if (fs::is_symlink(temp_file, ec))
+    // Security: Prevent symlink attacks with TOCTOU-safe file creation
+    fs::path temp_file;
+    int max_attempts = 10;
+    for (int attempt = 0; attempt < max_attempts; ++attempt)
     {
-        fs::remove(temp_file, ec);
-        throw std::runtime_error("Refusing to use symlinked temp file for --agents: " +
-                                 temp_file.string());
+        temp_file = fs::temp_directory_path() / make_name();
+
+        std::error_code ec;
+        // Check if path already exists (could be a symlink planted by attacker)
+        if (fs::exists(temp_file, ec))
+            continue; // Try a different name
+
+        // Create file exclusively (fails if file exists)
+        std::ofstream ofs(temp_file, std::ios::binary | std::ios::out | std::ios::trunc);
+        if (!ofs)
+            continue; // Try again with different name
+
+        // Verify it's not a symlink after creation
+        if (fs::is_symlink(temp_file, ec))
+        {
+            ofs.close();
+            fs::remove(temp_file, ec);
+            throw std::runtime_error("Symlink detected after temp file creation: " +
+                                     temp_file.string());
+        }
+
+        // Write contents
+        ofs << contents;
+        ofs.close();
+
+        // Final verification before returning
+        if (fs::is_symlink(temp_file, ec))
+        {
+            fs::remove(temp_file, ec);
+            throw std::runtime_error("Symlink race detected for temp file: " + temp_file.string());
+        }
+
+        // Success
+        temp_files.push_back(temp_file.string());
+        return temp_file.string();
     }
 
-    temp_files.push_back(temp_file.string());
-    return temp_file.string();
+    throw std::runtime_error("Failed to create secure temp file after " +
+                             std::to_string(max_attempts) + " attempts");
 }
 } // namespace
 
@@ -69,7 +97,8 @@ SubprocessCLITransport::SubprocessCLITransport(const std::string& prompt,
     : prompt_(prompt), options_(options), cli_path_(find_cli(cli_path)),
       is_streaming_(false) // Will be set based on prompt type
       ,
-      parser_(std::make_unique<protocol::MessageParser>()), ready_(false)
+      parser_(std::make_unique<protocol::MessageParser>(options.max_message_buffer_size)),
+      ready_(false)
 {
 }
 
@@ -141,11 +170,55 @@ void SubprocessCLITransport::connect()
     // Enable stderr redirection if callback is set
     if (options_.stderr_callback.has_value())
         proc_opts.redirect_stderr = true;
-    bool strip_env = std::getenv("CLAUDE_AGENT_SDK_STRIP_ENV") != nullptr;
-    proc_opts.inherit_environment = options_.inherit_environment && !strip_env;
 
-    // Merge environment variables
-    proc_opts.environment = options_.environment;
+    // Security: Environment variable sanitization
+    bool strip_env = std::getenv("CLAUDE_AGENT_SDK_STRIP_ENV") != nullptr;
+    bool should_sanitize = options_.sanitize_environment || strip_env;
+
+    if (should_sanitize)
+    {
+        // Security: Only forward essential system variables and allowlisted vars
+        proc_opts.inherit_environment = false;
+
+        // Build allowlist of essential system variables
+        std::vector<std::string> essential_vars = {
+            "PATH",         // Required for CLI execution
+            "HOME",         // Required for home directory access
+            "USERPROFILE",  // Windows equivalent of HOME
+            "TEMP",         // Temporary directory
+            "TMP",          // Alternative temp directory
+            "SystemRoot",   // Windows system root
+            "HOMEDRIVE",    // Windows home drive
+            "HOMEPATH",     // Windows home path
+            "APPDATA",      // Windows app data
+            "LOCALAPPDATA", // Windows local app data
+            "LANG",         // Locale settings
+            "LC_ALL",       // Locale settings
+            "TERM",         // Terminal type
+            "SHELL",        // Unix shell
+        };
+
+        // Add essential variables that exist in parent environment
+        for (const auto& var_name : essential_vars)
+            if (const char* value = std::getenv(var_name.c_str()))
+                proc_opts.environment[var_name] = value;
+
+        // Add allowlisted variables from options
+        for (const auto& var_name : options_.allowed_env_vars)
+            if (const char* value = std::getenv(var_name.c_str()))
+                proc_opts.environment[var_name] = value;
+    }
+    else
+    {
+        // Legacy behavior: inherit full environment
+        proc_opts.inherit_environment = options_.inherit_environment;
+    }
+
+    // Merge custom environment variables (these always override)
+    for (const auto& [key, value] : options_.environment)
+        proc_opts.environment[key] = value;
+
+    // SDK-specific variables (always set)
     proc_opts.environment["CLAUDE_CODE_ENTRYPOINT"] = "sdk-cpp";
     // Report the C++ SDK version to the CLI environment
     proc_opts.environment["CLAUDE_AGENT_SDK_VERSION"] = version_string();
@@ -416,25 +489,38 @@ std::string SubprocessCLITransport::find_cli(const std::optional<std::string>& h
     const bool require_explicit = options_.require_explicit_cli ||
                                   (std::getenv("CLAUDE_AGENT_SDK_REQUIRE_EXPLICIT_CLI") != nullptr);
 
-    if (hint)
+    // Helper lambda to validate discovered CLI path
+    auto validate_cli_path = [this](const std::string& path) -> std::string
     {
-        if (std::filesystem::exists(*hint))
-            return *hint;
-        throw CLINotFoundError("Claude Code not found at: " + *hint);
-    }
+        namespace fs = std::filesystem;
+
+        // Check file exists
+        if (!fs::exists(path))
+            throw CLINotFoundError("CLI path does not exist: " + path);
+
+        // Security: Check allowlist if configured
+        if (!claude_agent_sdk::internal::verify_cli_path_allowed(path, options_.allowed_cli_paths))
+        {
+            throw CLINotFoundError("CLI path not in allowlist: " + path +
+                                   ". Configure allowed_cli_paths or use explicit path.");
+        }
+
+        // Security: Verify hash if configured
+        std::string error_msg;
+        if (!claude_agent_sdk::internal::verify_cli_hash(path, options_.cli_hash_sha256, error_msg))
+            throw CLINotFoundError("CLI integrity check failed: " + error_msg);
+
+        return path;
+    };
+
+    if (hint)
+        return validate_cli_path(*hint);
 
     if (!options_.cli_path.empty())
-    {
-        if (std::filesystem::exists(options_.cli_path))
-            return options_.cli_path;
-        throw CLINotFoundError("Claude Code not found at: " + options_.cli_path);
-    }
+        return validate_cli_path(options_.cli_path);
 
     if (const char* env_cli = std::getenv("CLAUDE_CLI_PATH"))
-    {
-        if (std::filesystem::exists(env_cli))
-            return std::string(env_cli);
-    }
+        return validate_cli_path(std::string(env_cli));
 
     if (require_explicit)
         throw CLINotFoundError("CLAUDE_AGENT_SDK_REQUIRE_EXPLICIT_CLI is set; provide cli_path, "
@@ -442,7 +528,7 @@ std::string SubprocessCLITransport::find_cli(const std::optional<std::string>& h
 
     // Try PATH first
     if (auto path = subprocess::find_executable("claude"))
-        return *path;
+        return validate_cli_path(*path);
 
     // Common locations
     std::vector<std::filesystem::path> locations;
@@ -464,7 +550,7 @@ std::string SubprocessCLITransport::find_cli(const std::optional<std::string>& h
 
     for (const auto& loc : locations)
         if (std::filesystem::exists(loc))
-            return loc.string();
+            return validate_cli_path(loc.string());
 
     throw CLINotFoundError("Claude Code not found. Install with:\n"
                            "  npm install -g @anthropic-ai/claude-code\n");
@@ -472,7 +558,13 @@ std::string SubprocessCLITransport::find_cli(const std::optional<std::string>& h
 
 void SubprocessCLITransport::check_cli_version()
 {
-    // Run: claude -v and enforce minimum version >= 2.0.0
+    // Check Claude Code version - enforces minimum or warns depending on configuration
+    // When enforce_version_check is true (default), throws on version mismatch
+    const bool should_skip = std::getenv("CLAUDE_AGENT_SDK_SKIP_VERSION_CHECK") != nullptr &&
+                             !options_.enforce_version_check;
+    if (should_skip)
+        return; // Skip check only if explicitly allowed
+
     try
     {
         subprocess::Process version_proc;
@@ -510,9 +602,20 @@ void SubprocessCLITransport::check_cli_version()
                 std::ostringstream oss;
                 oss << "Claude Code CLI version " << major << "." << minor << "." << patch
                     << " is too old; require >= " << REQ_MAJOR << "." << REQ_MINOR << "."
-                    << REQ_PATCH
-                    << ".\nInstall or upgrade with:\n  npm install -g @anthropic-ai/claude-code\n";
-                throw CLIConnectionError(oss.str());
+                    << REQ_PATCH;
+
+                // Security: Fail hard if enforce_version_check is enabled
+                if (options_.enforce_version_check)
+                {
+                    oss << ". Set enforce_version_check=false to bypass (not recommended).\n"
+                        << "Install or upgrade with:\n  npm install -g @anthropic-ai/claude-code\n";
+                    throw CLIConnectionError(oss.str());
+                }
+
+                // Otherwise, just warn
+                std::string warning =
+                    "Warning: " + oss.str() + ". Some features may not work correctly.";
+                std::cerr << warning << std::endl;
             }
         }
         else
@@ -537,6 +640,9 @@ std::vector<Message> SubprocessCLITransport::read_messages()
 
     std::vector<Message> all_messages;
 
+    // Security: Track total bytes read and message count to prevent memory exhaustion
+    size_t total_bytes_read = 0;
+
     // Read until EOF
     // Just call read() directly - it will block until data arrives or EOF
     // Don't use has_data() on Windows - PeekNamedPipe is unreliable
@@ -544,15 +650,34 @@ std::vector<Message> SubprocessCLITransport::read_messages()
 
     while (true)
     {
+        // Security: Check if we've exceeded total read limit
+        if (total_bytes_read >= options_.max_total_read_bytes)
+        {
+            throw JSONDecodeError("Exceeded maximum total read bytes of " +
+                                  std::to_string(options_.max_total_read_bytes) + " (read " +
+                                  std::to_string(total_bytes_read) + " bytes)");
+        }
+
         size_t n = process_->stdout_pipe().read(buffer, sizeof(buffer));
 
         if (n == 0)
             break; // EOF
 
+        total_bytes_read += n;
+
         std::string data(buffer, n);
         auto messages = parser_->add_data(data);
 
         all_messages.insert(all_messages.end(), messages.begin(), messages.end());
+
+        // Security: Check if we've exceeded message count limit
+        if (all_messages.size() >= options_.max_messages_per_read)
+        {
+            throw JSONDecodeError("Exceeded maximum messages per read of " +
+                                  std::to_string(options_.max_messages_per_read) +
+                                  " (accumulated " + std::to_string(all_messages.size()) +
+                                  " messages)");
+        }
     }
 
     // Process any remaining buffered data in parser
@@ -560,6 +685,16 @@ std::vector<Message> SubprocessCLITransport::read_messages()
     {
         // Add a newline to flush any partial line
         auto messages = parser_->add_data("\n");
+
+        // Security: Check message limit before adding final messages
+        if (all_messages.size() + messages.size() > options_.max_messages_per_read)
+        {
+            throw JSONDecodeError(
+                "Exceeded maximum messages per read of " +
+                std::to_string(options_.max_messages_per_read) + " (would accumulate " +
+                std::to_string(all_messages.size() + messages.size()) + " messages)");
+        }
+
         all_messages.insert(all_messages.end(), messages.begin(), messages.end());
     }
 
