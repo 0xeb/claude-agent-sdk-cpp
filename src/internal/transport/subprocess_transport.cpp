@@ -1,5 +1,7 @@
 #include "subprocess_transport.hpp"
 
+#include "cli_verification.hpp"
+
 #include <chrono>
 #include <claude/errors.hpp>
 #include <claude/version.hpp>
@@ -56,38 +58,62 @@ std::string write_agents_temp_file(const std::string& contents,
         return std::string("claude_agents-") + hex + ".json";
     };
 
-    fs::path temp_file = fs::temp_directory_path() / make_name();
-
-    std::ofstream ofs(temp_file, std::ios::binary | std::ios::out | std::ios::trunc);
-    if (!ofs)
-        throw std::runtime_error("Failed to create temp file for --agents");
-    ofs << contents;
-    ofs.close();
-
-    std::error_code ec;
-    if (fs::is_symlink(temp_file, ec))
+    // Security: Prevent symlink attacks with TOCTOU-safe file creation
+    fs::path temp_file;
+    int max_attempts = 10;
+    for (int attempt = 0; attempt < max_attempts; ++attempt)
     {
-        fs::remove(temp_file, ec);
-        throw std::runtime_error("Refusing to use symlinked temp file for --agents: " +
-                                 temp_file.string());
+        temp_file = fs::temp_directory_path() / make_name();
+
+        std::error_code ec;
+        // Check if path already exists (could be a symlink planted by attacker)
+        if (fs::exists(temp_file, ec))
+            continue; // Try a different name
+
+        // Create file exclusively (fails if file exists)
+        std::ofstream ofs(temp_file, std::ios::binary | std::ios::out | std::ios::trunc);
+        if (!ofs)
+            continue; // Try again with different name
+
+        // Verify it's not a symlink after creation
+        if (fs::is_symlink(temp_file, ec))
+        {
+            ofs.close();
+            fs::remove(temp_file, ec);
+            throw std::runtime_error("Symlink detected after temp file creation: " +
+                                     temp_file.string());
+        }
+
+        // Write contents
+        ofs << contents;
+        ofs.close();
+
+        // Final verification before returning
+        if (fs::is_symlink(temp_file, ec))
+        {
+            fs::remove(temp_file, ec);
+            throw std::runtime_error("Symlink race detected for temp file: " + temp_file.string());
+        }
+
+        // Success
+        temp_files.push_back(temp_file.string());
+        return temp_file.string();
     }
 
-    temp_files.push_back(temp_file.string());
-    return temp_file.string();
+    throw std::runtime_error("Failed to create secure temp file after " +
+                             std::to_string(max_attempts) + " attempts");
 }
 } // namespace
 
 SubprocessTransport::SubprocessTransport(const ClaudeOptions& options, bool streaming_mode)
     : options_(options), streaming_mode_(streaming_mode),
-      parser_(std::make_unique<protocol::MessageParser>(
-          options.max_buffer_size.value_or(DEFAULT_MAX_BUFFER_SIZE)))
+      parser_(std::make_unique<protocol::MessageParser>(options.max_message_buffer_size))
 {
 }
 
 SubprocessTransport::SubprocessTransport(const std::string& prompt, const ClaudeOptions& options)
     : options_(options), streaming_mode_(false), one_shot_prompt_(prompt),
-      parser_(std::make_unique<protocol::MessageParser>(
-          options.max_buffer_size.value_or(DEFAULT_MAX_BUFFER_SIZE)))
+      parser_(std::make_unique<protocol::MessageParser>(options.max_message_buffer_size))
 {
 }
 
@@ -156,14 +182,58 @@ void SubprocessTransport::connect()
     proc_opts.redirect_stdout = true;
     // Redirect stderr if callback is present
     proc_opts.redirect_stderr = options_.stderr_callback.has_value();
-    bool strip_env = std::getenv("CLAUDE_AGENT_SDK_STRIP_ENV") != nullptr;
-    proc_opts.inherit_environment = options_.inherit_environment && !strip_env;
 
     if (options_.working_directory)
         proc_opts.working_directory = *options_.working_directory;
 
-    // Merge environment variables
-    proc_opts.environment = options_.environment;
+    // Security: Environment variable sanitization
+    bool strip_env = std::getenv("CLAUDE_AGENT_SDK_STRIP_ENV") != nullptr;
+    bool should_sanitize = options_.sanitize_environment || strip_env;
+
+    if (should_sanitize)
+    {
+        // Security: Only forward essential system variables and allowlisted vars
+        proc_opts.inherit_environment = false;
+
+        // Build allowlist of essential system variables
+        std::vector<std::string> essential_vars = {
+            "PATH",         // Required for CLI execution
+            "HOME",         // Required for home directory access
+            "USERPROFILE",  // Windows equivalent of HOME
+            "TEMP",         // Temporary directory
+            "TMP",          // Alternative temp directory
+            "SystemRoot",   // Windows system root
+            "HOMEDRIVE",    // Windows home drive
+            "HOMEPATH",     // Windows home path
+            "APPDATA",      // Windows app data
+            "LOCALAPPDATA", // Windows local app data
+            "LANG",         // Locale settings
+            "LC_ALL",       // Locale settings
+            "TERM",         // Terminal type
+            "SHELL",        // Unix shell
+        };
+
+        // Add essential variables that exist in parent environment
+        for (const auto& var_name : essential_vars)
+            if (const char* value = std::getenv(var_name.c_str()))
+                proc_opts.environment[var_name] = value;
+
+        // Add allowlisted variables from options
+        for (const auto& var_name : options_.allowed_env_vars)
+            if (const char* value = std::getenv(var_name.c_str()))
+                proc_opts.environment[var_name] = value;
+    }
+    else
+    {
+        // Legacy behavior: inherit full environment
+        proc_opts.inherit_environment = options_.inherit_environment;
+    }
+
+    // Merge custom environment variables (these always override)
+    for (const auto& [key, value] : options_.environment)
+        proc_opts.environment[key] = value;
+
+    // SDK-specific variables (always set)
     proc_opts.environment["CLAUDE_CODE_ENTRYPOINT"] = "sdk-py";
     proc_opts.environment["CLAUDE_AGENT_SDK_VERSION"] = version_string();
 
@@ -556,26 +626,37 @@ std::string SubprocessTransport::find_cli() const
     const bool require_explicit = options_.require_explicit_cli ||
                                   (std::getenv("CLAUDE_AGENT_SDK_REQUIRE_EXPLICIT_CLI") != nullptr);
 
+    // Helper lambda to validate discovered CLI path
+    auto validate_cli_path = [this](const std::string& path) -> std::string
+    {
+        namespace fs = std::filesystem;
+
+        // Check file exists
+        if (!fs::exists(path))
+            throw CLINotFoundError("CLI path does not exist: " + path);
+
+        // Security: Check allowlist if configured
+        if (!claude_agent_sdk::internal::verify_cli_path_allowed(path, options_.allowed_cli_paths))
+        {
+            throw CLINotFoundError("CLI path not in allowlist: " + path +
+                                   ". Configure allowed_cli_paths or use explicit path.");
+        }
+
+        // Security: Verify hash if configured
+        std::string error_msg;
+        if (!claude_agent_sdk::internal::verify_cli_hash(path, options_.cli_hash_sha256, error_msg))
+            throw CLINotFoundError("CLI integrity check failed: " + error_msg);
+
+        return path;
+    };
+
     // If user provided explicit CLI path, prefer it
     if (!options_.cli_path.empty())
-    {
-        // Validate the provided path exists
-        namespace fs = std::filesystem;
-        fs::path p(options_.cli_path);
-        if (fs::exists(p))
-            return options_.cli_path;
-        // Path does not exist
-        throw CLINotFoundError(std::string("Claude Code not found at: ") + options_.cli_path);
-    }
+        return validate_cli_path(options_.cli_path);
 
     // Environment override: CLAUDE_CLI_PATH
     if (const char* env_cli = std::getenv("CLAUDE_CLI_PATH"))
-    {
-        namespace fs = std::filesystem;
-        fs::path p(env_cli);
-        if (fs::exists(p))
-            return std::string(env_cli);
-    }
+        return validate_cli_path(std::string(env_cli));
 
     if (require_explicit)
         throw CLINotFoundError("CLAUDE_AGENT_SDK_REQUIRE_EXPLICIT_CLI is set; provide cli_path or "
@@ -583,7 +664,7 @@ std::string SubprocessTransport::find_cli() const
 
     // Fallback: search PATH for 'claude'
     if (auto result = subprocess::find_executable("claude"))
-        return *result;
+        return validate_cli_path(*result);
 
     // Check local installation
     if (const char* home = std::getenv("HOME"))
@@ -591,7 +672,7 @@ std::string SubprocessTransport::find_cli() const
         namespace fs = std::filesystem;
         fs::path local_cli = fs::path(home) / ".claude" / "local" / "claude";
         if (fs::exists(local_cli))
-            return local_cli.string();
+            return validate_cli_path(local_cli.string());
     }
 
     throw CLINotFoundError("Could not find 'claude' executable in PATH. "
@@ -600,8 +681,13 @@ std::string SubprocessTransport::find_cli() const
 
 void SubprocessTransport::check_claude_version(const std::string& cli_path)
 {
-    // Check Claude Code version and warn if below minimum
-    // Non-blocking: all exceptions are caught and ignored
+    // Check Claude Code version - enforces minimum or warns depending on configuration
+    // When enforce_version_check is true (default), throws on version mismatch
+    const bool should_skip = std::getenv("CLAUDE_AGENT_SDK_SKIP_VERSION_CHECK") != nullptr &&
+                             !options_.enforce_version_check;
+    if (should_skip)
+        return; // Skip check only if explicitly allowed
+
     try
     {
         subprocess::Process version_process;
@@ -664,13 +750,21 @@ void SubprocessTransport::check_claude_version(const std::string& cli_path)
             // Compare versions
             if (version_parts < min_parts)
             {
-                std::string warning = "Warning: Claude Code version " + version_str +
-                                      " is unsupported in the Agent SDK. "
-                                      "Minimum required version is " +
-                                      std::string(MINIMUM_CLAUDE_CODE_VERSION) +
-                                      ". Some features may not work correctly.";
+                std::string error_msg = "Claude Code version " + version_str +
+                                        " is unsupported. Minimum required: " +
+                                        std::string(MINIMUM_CLAUDE_CODE_VERSION);
 
-                // Send warning via stderr callback if present, otherwise to stderr
+                // Security: Fail hard if enforce_version_check is enabled
+                if (options_.enforce_version_check)
+                {
+                    throw CLINotFoundError(
+                        error_msg +
+                        ". Set enforce_version_check=false to bypass (not recommended).");
+                }
+
+                // Otherwise, just warn
+                std::string warning =
+                    "Warning: " + error_msg + ". Some features may not work correctly.";
                 if (options_.stderr_callback.has_value())
                 {
                     try

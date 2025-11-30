@@ -46,6 +46,7 @@ add_library(claude_sdk
     src/internal/subprocess/process.cpp
     src/internal/message_parser.cpp
     src/internal/transport/subprocess_transport.cpp
+    src/internal/transport/cli_verification.cpp
     # Extensions (C++ conveniences)
     src/ext/session_storage.cpp
     ${CLAUDE_CONFIG_FILES}
@@ -63,6 +64,14 @@ target_link_libraries(claude_sdk
     PUBLIC
         nlohmann_json::nlohmann_json
 )
+
+# Security: Link crypto libraries for CLI hash verification
+if(WIN32)
+    target_link_libraries(claude_sdk PRIVATE crypt32)
+else()
+    find_package(OpenSSL REQUIRED)
+    target_link_libraries(claude_sdk PRIVATE OpenSSL::Crypto)
+endif()
 
 # Set target properties
 set_target_properties(claude_sdk PROPERTIES

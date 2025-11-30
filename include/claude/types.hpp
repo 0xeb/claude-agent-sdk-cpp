@@ -431,6 +431,45 @@ struct ClaudeOptions
     // are allowed (cli_path or CLAUDE_CLI_PATH). PATH/home discovery is disabled.
     bool require_explicit_cli = false;
 
+    // Security: CLI path allowlist for production use (v0.1.11+)
+    // If non-empty, only CLI paths in this list are allowed. Provides protection against
+    // PATH poisoning and unauthorized CLI execution.
+    std::vector<std::string> allowed_cli_paths;
+
+    // Security: Optional SHA256 hash for CLI integrity verification (v0.1.11+)
+    // If set, the CLI executable must match this hash. Format: 64-character hex string.
+    std::optional<std::string> cli_hash_sha256;
+
+    // Security: Enforce version check (v0.1.11+)
+    // When true (default), version check failures cause hard errors instead of warnings.
+    // Set to false only for testing/development.
+    bool enforce_version_check = true;
+
+    // Security: Environment variable sanitization (v0.1.11+)
+    // When true (default), only forward environment variables in allowed_env_vars plus
+    // essential system variables (PATH, HOME, TEMP, etc.). Prevents credential leakage.
+    // When false, inherits full parent environment (legacy behavior, not recommended).
+    bool sanitize_environment = true;
+
+    // Security: Allowed environment variables for CLI subprocess (v0.1.11+)
+    // When sanitize_environment is true, only these variables (plus essential system vars)
+    // are forwarded to the spawned CLI process. Empty list = only essential vars.
+    // Example: {"NODE_ENV", "DEBUG"}
+    std::vector<std::string> allowed_env_vars;
+
+    // Security: Message parsing limits (v0.1.11+)
+    // Maximum size for message parser internal buffer. Prevents unbounded memory growth
+    // from malformed or very long message lines. Default: 10MB
+    size_t max_message_buffer_size = 10 * 1024 * 1024;
+
+    // Security: Maximum number of messages to accumulate in a single read operation (v0.1.11+)
+    // Prevents memory exhaustion from CLI outputting excessive messages. Default: 10000
+    size_t max_messages_per_read = 10000;
+
+    // Security: Maximum total bytes to read from CLI stdout in one operation (v0.1.11+)
+    // Prevents unbounded reads from malicious/broken CLI. Default: 100MB
+    size_t max_total_read_bytes = 100 * 1024 * 1024;
+
     // Plugin configurations
     // List of plugins to load. Each plugin is passed to CLI via --plugin-dir flag.
     std::vector<SdkPluginConfig> plugins;

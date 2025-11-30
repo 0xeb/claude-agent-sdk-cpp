@@ -22,6 +22,7 @@ add_executable(test_claude
     unit/test_control.cpp
     unit/test_mcp_templates.cpp
     unit/test_parity_fields.cpp
+    unit/test_temp_file_security.cpp
     integration/sdk_mcp_integration.cpp
     integration/sdk_mcp_integration_errors.cpp
     integration/test_query.cpp
