@@ -19,6 +19,8 @@ add_executable(test_claude
     unit/test_types.cpp
     unit/test_parser.cpp
     unit/test_transport_cli_path.cpp
+    unit/test_sandbox.cpp
+    unit/test_agents.cpp
     unit/test_control.cpp
     unit/test_mcp_templates.cpp
     unit/test_parity_fields.cpp
@@ -28,6 +30,11 @@ add_executable(test_claude
     integration/test_query.cpp
     integration/test_client.cpp
     integration/test_control_protocol.cpp
+    integration/test_agents_integration.cpp
+    integration/test_sandbox_integration.cpp
+    integration/test_mcp_integration.cpp
+    integration/test_streaming_integration.cpp
+    integration/test_session_integration.cpp
     extra/test_multithreading.cpp
     # Extension tests
     ext/test_session_storage.cpp

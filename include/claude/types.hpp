@@ -407,6 +407,76 @@ struct StreamEvent
 using Message = std::variant<UserMessage, AssistantMessage, SystemMessage, ResultMessage,
                              StreamEvent, protocol::ControlRequest, protocol::ControlResponse>;
 
+// Sandbox configuration types (v0.1.10+)
+// Controls how Claude Code sandboxes bash commands for filesystem and network isolation.
+// NOTE: Sandbox only works on macOS/Linux. Settings are no-op on Windows.
+
+/// Violations to ignore when sandboxing
+struct SandboxIgnoreViolations
+{
+    std::optional<std::vector<std::string>>
+        file; // File paths for which violations should be ignored
+    std::optional<std::vector<std::string>>
+        network; // Network hosts for which violations should be ignored
+};
+
+/// Network configuration for sandbox
+struct SandboxNetworkConfig
+{
+    std::optional<std::vector<std::string>>
+        allowUnixSockets;                    // Unix socket paths accessible in sandbox
+    std::optional<bool> allowAllUnixSockets; // Allow all Unix sockets (less secure)
+    std::optional<bool> allowLocalBinding;   // Allow binding to localhost ports (macOS only)
+    std::optional<int> httpProxyPort;        // HTTP proxy port if bringing your own proxy
+    std::optional<int> socksProxyPort;       // SOCKS5 proxy port if bringing your own proxy
+};
+
+/// Sandbox settings configuration
+/// This controls how Claude Code sandboxes bash commands for filesystem and network isolation.
+///
+/// **Important:** Filesystem and network restrictions are configured via permission rules,
+/// not via these sandbox settings:
+/// - Filesystem read restrictions: Use Read deny rules
+/// - Filesystem write restrictions: Use Edit allow/deny rules
+/// - Network restrictions: Use WebFetch allow/deny rules
+///
+/// Example:
+/// ```cpp
+/// SandboxSettings sandbox;
+/// sandbox.enabled = true;
+/// sandbox.autoAllowBashIfSandboxed = true;
+/// sandbox.excludedCommands = {"docker"};
+/// sandbox.network = SandboxNetworkConfig{
+///     .allowLocalBinding = true
+/// };
+/// opts.sandbox = sandbox;
+/// ```
+struct SandboxSettings
+{
+    /// Enable bash sandboxing (macOS/Linux only). Default: False
+    std::optional<bool> enabled;
+
+    /// Auto-approve bash commands when sandboxed. Default: True
+    std::optional<bool> autoAllowBashIfSandboxed;
+
+    /// Commands that should run outside the sandbox (e.g., ["git", "docker"])
+    std::optional<std::vector<std::string>> excludedCommands;
+
+    /// Allow commands to bypass sandbox via dangerouslyDisableSandbox.
+    /// When False, all commands must run sandboxed (or be in excludedCommands). Default: True
+    std::optional<bool> allowUnsandboxedCommands;
+
+    /// Network configuration for sandbox
+    std::optional<SandboxNetworkConfig> network;
+
+    /// Violations to ignore
+    std::optional<SandboxIgnoreViolations> ignoreViolations;
+
+    /// Enable weaker sandbox for unprivileged Docker environments (Linux only).
+    /// Reduces security. Default: False
+    std::optional<bool> enableWeakerNestedSandbox;
+};
+
 // Configuration options
 struct ClaudeOptions
 {
@@ -478,7 +548,8 @@ struct ClaudeOptions
     std::string permission_prompt_tool_name;  // Tool to prompt for permissions
     std::string mcp_config;                   // MCP server configuration (JSON string or path)
     std::vector<std::string> add_dirs;        // Additional directories to add
-    std::string settings;                     // Settings file path
+    std::string settings;                     // Settings file path or JSON string
+    std::optional<SandboxSettings> sandbox;   // Sandbox configuration (v0.1.10+, macOS/Linux only)
     std::string resume;                       // Resume session ID
     std::vector<std::string> setting_sources; // Setting sources
     bool continue_conversation = false;       // Continue previous conversation
