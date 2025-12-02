@@ -64,6 +64,9 @@ class SubprocessCLITransport
     // Build command line arguments
     std::vector<std::string> build_command();
 
+    // Build settings value, merging sandbox settings if provided
+    std::optional<std::string> build_settings_value() const;
+
     // Find CLI executable
     static std::string find_cli(const std::optional<std::string>& hint);
 

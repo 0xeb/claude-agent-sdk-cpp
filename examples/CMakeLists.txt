@@ -146,6 +146,17 @@ target_link_libraries(max_thinking_tokens
 
 set_target_properties(max_thinking_tokens PROPERTIES FOLDER "Examples")
 
+add_executable(agents
+    agents.cpp
+)
+
+target_link_libraries(agents
+    PRIVATE
+        claude_sdk
+)
+
+set_target_properties(agents PROPERTIES FOLDER "Examples")
+
 # Advanced and non-mirrored examples (including decorators and MCP showcases)
 # are not built as part of the core SDK example set and are maintained
 # separately from this directory.

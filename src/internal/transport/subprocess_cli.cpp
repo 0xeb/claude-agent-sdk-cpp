@@ -285,6 +285,118 @@ void SubprocessCLITransport::connect()
     }
 }
 
+// Helper function to serialize sandbox settings to JSON
+static json sandbox_to_json(const SandboxSettings& sandbox)
+{
+    json j;
+
+    if (sandbox.enabled.has_value())
+        j["enabled"] = *sandbox.enabled;
+    if (sandbox.autoAllowBashIfSandboxed.has_value())
+        j["autoAllowBashIfSandboxed"] = *sandbox.autoAllowBashIfSandboxed;
+    if (sandbox.excludedCommands.has_value())
+        j["excludedCommands"] = *sandbox.excludedCommands;
+    if (sandbox.allowUnsandboxedCommands.has_value())
+        j["allowUnsandboxedCommands"] = *sandbox.allowUnsandboxedCommands;
+
+    if (sandbox.network.has_value())
+    {
+        json net;
+        if (sandbox.network->allowUnixSockets.has_value())
+            net["allowUnixSockets"] = *sandbox.network->allowUnixSockets;
+        if (sandbox.network->allowAllUnixSockets.has_value())
+            net["allowAllUnixSockets"] = *sandbox.network->allowAllUnixSockets;
+        if (sandbox.network->allowLocalBinding.has_value())
+            net["allowLocalBinding"] = *sandbox.network->allowLocalBinding;
+        if (sandbox.network->httpProxyPort.has_value())
+            net["httpProxyPort"] = *sandbox.network->httpProxyPort;
+        if (sandbox.network->socksProxyPort.has_value())
+            net["socksProxyPort"] = *sandbox.network->socksProxyPort;
+        if (!net.empty())
+            j["network"] = net;
+    }
+
+    if (sandbox.ignoreViolations.has_value())
+    {
+        json ignore;
+        if (sandbox.ignoreViolations->file.has_value())
+            ignore["file"] = *sandbox.ignoreViolations->file;
+        if (sandbox.ignoreViolations->network.has_value())
+            ignore["network"] = *sandbox.ignoreViolations->network;
+        if (!ignore.empty())
+            j["ignoreViolations"] = ignore;
+    }
+
+    if (sandbox.enableWeakerNestedSandbox.has_value())
+        j["enableWeakerNestedSandbox"] = *sandbox.enableWeakerNestedSandbox;
+
+    return j;
+}
+
+std::optional<std::string> SubprocessCLITransport::build_settings_value() const
+{
+    bool has_settings = !options_.settings.empty();
+    bool has_sandbox = options_.sandbox.has_value();
+
+    // If neither settings nor sandbox, return nullopt
+    if (!has_settings && !has_sandbox)
+        return std::nullopt;
+
+    // If only settings and no sandbox, pass through as-is
+    if (has_settings && !has_sandbox)
+        return options_.settings;
+
+    // If we have sandbox settings, we need to merge into a JSON object
+    json settings_obj;
+
+    if (has_settings)
+    {
+        std::string settings_str = options_.settings;
+
+        // Trim whitespace
+        settings_str.erase(0, settings_str.find_first_not_of(" \t\n\r"));
+        settings_str.erase(settings_str.find_last_not_of(" \t\n\r") + 1);
+
+        // Check if settings is a JSON string or a file path
+        if (!settings_str.empty() && settings_str[0] == '{' && settings_str.back() == '}')
+        {
+            // Parse JSON string
+            try
+            {
+                settings_obj = json::parse(settings_str);
+            }
+            catch (const json::parse_error&)
+            {
+                // If parsing fails, treat as file path
+                std::filesystem::path settings_path(settings_str);
+                if (std::filesystem::exists(settings_path))
+                {
+                    std::ifstream file(settings_path);
+                    if (file.is_open())
+                        file >> settings_obj;
+                }
+            }
+        }
+        else
+        {
+            // It's a file path - read and parse
+            std::filesystem::path settings_path(settings_str);
+            if (std::filesystem::exists(settings_path))
+            {
+                std::ifstream file(settings_path);
+                if (file.is_open())
+                    file >> settings_obj;
+            }
+        }
+    }
+
+    // Merge sandbox settings
+    if (has_sandbox)
+        settings_obj["sandbox"] = sandbox_to_json(*options_.sandbox);
+
+    return settings_obj.dump();
+}
+
 std::vector<std::string> SubprocessCLITransport::build_command()
 {
     std::vector<std::string> cmd;
@@ -397,11 +509,12 @@ std::vector<std::string> SubprocessCLITransport::build_command()
         cmd.push_back(options_.resume);
     }
 
-    // Settings file
-    if (!options_.settings.empty())
+    // Settings file or JSON (with optional sandbox merge)
+    auto settings_value = build_settings_value();
+    if (settings_value.has_value())
     {
         cmd.push_back("--settings");
-        cmd.push_back(options_.settings);
+        cmd.push_back(*settings_value);
     }
 
     // Additional directories (repeated flag)
