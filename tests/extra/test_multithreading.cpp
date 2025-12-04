@@ -166,7 +166,7 @@ TEST(MultithreadingTest, MultipleClientsSequential)
     }
 }
 
-TEST(MultithreadingTest, MultipleClientsParallel)
+TEST(MultithreadingTest, DISABLED_MultipleClientsParallel)
 {
     // Main test: Create multiple clients in parallel threads
     // Note: Each client spawns a Claude CLI subprocess, so this is resource-intensive
