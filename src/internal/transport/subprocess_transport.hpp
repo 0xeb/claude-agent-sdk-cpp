@@ -80,6 +80,9 @@ class SubprocessTransport : public Transport
     std::queue<Message> message_queue_;
     bool queue_stopped_ = false;
 
+    // Serialize stdin writes and coordinate with close/end_input
+    mutable std::mutex write_mutex_;
+
     // Reader thread (stdout)
     std::thread reader_thread_;
     std::atomic<bool> running_{false};

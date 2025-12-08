@@ -167,5 +167,24 @@ void ControlProtocol::reject_request(const std::string& request_id, const std::s
     }
 }
 
+void ControlProtocol::fail_all_pending(const std::string& error)
+{
+    std::lock_guard<std::mutex> lock(requests_mutex_);
+
+    for (auto& [id, promise] : pending_requests_)
+    {
+        try
+        {
+            promise.set_exception(std::make_exception_ptr(ClaudeError(error)));
+        }
+        catch (...)
+        {
+            // Promise already satisfied
+        }
+    }
+
+    pending_requests_.clear();
+}
+
 } // namespace protocol
 } // namespace claude

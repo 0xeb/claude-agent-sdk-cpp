@@ -38,6 +38,28 @@ int get_initialize_timeout_ms()
     return initialize_timeout_ms;
 }
 
+// Stream close timeout used for first-result-gated stdin close behavior.
+// Uses the same CLAUDE_CODE_STREAM_CLOSE_TIMEOUT environment variable as
+// the Python SDK, expressed directly in milliseconds (default: 60000).
+int get_stream_close_timeout_ms()
+{
+    int stream_close_timeout_ms = 60000;
+    if (const char* env = std::getenv("CLAUDE_CODE_STREAM_CLOSE_TIMEOUT"))
+    {
+        try
+        {
+            int parsed = std::stoi(env);
+            if (parsed > 0)
+                stream_close_timeout_ms = parsed;
+        }
+        catch (...)
+        {
+            // Ignore parse errors; keep default
+        }
+    }
+    return stream_close_timeout_ms;
+}
+
 // Convert Python-friendly hook output keys to CLI-expected keys.
 // - async_     -> async
 // - continue_  -> continue
@@ -153,6 +175,14 @@ class ClaudeClient::Impl
     bool initialized_ = false;
     json initialization_result_;
 
+    // Stream-close gating: track when a ResultMessage has been seen for the
+    // currently active query so we can optionally delay stdin close in SDK MCP
+    // / hook scenarios (mirrors Python _first_result_event behavior).
+    mutable std::mutex first_result_mutex_;
+    std::condition_variable first_result_cv_;
+    bool first_result_seen_ = false;
+    bool has_active_query_ = false;
+
     // Hook callback registry
     std::map<std::string, HookCallback> hook_callbacks_;
     int next_callback_id_ = 0;
@@ -191,6 +221,58 @@ class ClaudeClient::Impl
             if (reader_thread_.joinable())
                 reader_thread_.join();
         }
+    }
+
+    void on_new_query_started()
+    {
+        std::lock_guard<std::mutex> lock(first_result_mutex_);
+        first_result_seen_ = false;
+        has_active_query_ = true;
+    }
+
+    void on_result_message()
+    {
+        {
+            std::lock_guard<std::mutex> lock(first_result_mutex_);
+            first_result_seen_ = true;
+            has_active_query_ = false;
+        }
+        first_result_cv_.notify_all();
+    }
+
+    void notify_reader_stopped()
+    {
+        std::lock_guard<std::mutex> lock(first_result_mutex_);
+        has_active_query_ = false;
+        first_result_cv_.notify_all();
+    }
+
+    void wait_for_first_result_if_needed()
+    {
+        // Only apply gating when hooks or SDK MCP handlers are configured.
+        bool has_hooks = !options_.hooks.empty();
+        bool has_sdk_mcp = !options_.sdk_mcp_handlers.empty();
+
+        if (!has_hooks && !has_sdk_mcp)
+            return;
+
+        int timeout_ms = get_stream_close_timeout_ms();
+        if (timeout_ms <= 0)
+            return;
+
+        std::unique_lock<std::mutex> lock(first_result_mutex_);
+
+        // If there is no active query or we've already seen a result, do not wait.
+        if (!has_active_query_ || first_result_seen_)
+            return;
+
+        auto predicate = [this]
+        {
+            return !has_active_query_ || first_result_seen_ || !running_ || !transport_ ||
+                   !transport_->is_running();
+        };
+
+        first_result_cv_.wait_for(lock, std::chrono::milliseconds(timeout_ms), predicate);
     }
 
     void reader_loop()
@@ -233,7 +315,10 @@ class ClaudeClient::Impl
                     persistent_message_queue_->push_message(std::move(msg));
 
                     if (is_result)
+                    {
                         persistent_message_queue_->mark_end_of_response();
+                        on_result_message();
+                    }
                 }
 
                 // Small sleep to avoid busy waiting
@@ -241,14 +326,21 @@ class ClaudeClient::Impl
                     std::this_thread::sleep_for(std::chrono::milliseconds(10));
             }
         }
-        catch (const std::exception&)
+        catch (const std::exception& e)
         {
-            // Error in reader loop - mark persistent queue as stopped
+            // Error in reader loop – stop queue and fail all pending control requests
             persistent_message_queue_->stop();
+            control_protocol_->fail_all_pending(e.what());
+        }
+        catch (...)
+        {
+            persistent_message_queue_->stop();
+            control_protocol_->fail_all_pending("Unknown error in reader loop");
         }
 
         // Mark persistent queue as ended
         persistent_message_queue_->stop();
+        notify_reader_stopped();
     }
 
     void initialize()
@@ -610,6 +702,15 @@ void ClaudeClient::disconnect()
     if (!impl_ || !impl_->connected_)
         return;
 
+    // For SDK MCP / hook scenarios, wait briefly for the first result
+    // before closing stdin to mirror Python's first-result-gated stream
+    // close behavior.
+    impl_->wait_for_first_result_if_needed();
+
+    // End input to allow the CLI process to finish cleanly.
+    if (impl_->transport_)
+        impl_->transport_->end_input();
+
     // Stop reader thread first
     impl_->stop_reader();
 
@@ -642,6 +743,9 @@ void ClaudeClient::send_query(const std::string& prompt, const std::string& sess
 
     // Reset the end_of_response flag for this new query
     impl_->persistent_message_queue_->reset_for_new_query();
+
+    // Track a new active query for first-result-gated stream close behavior.
+    impl_->on_new_query_started();
 
     // Build user message JSON in the format the CLI expects
     json msg = {{"type", "user"},

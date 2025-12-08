@@ -258,6 +258,9 @@ void SubprocessTransport::connect()
 
 void SubprocessTransport::write(const std::string& data)
 {
+    // Serialize writes and coordinate with close/end_input to avoid races
+    std::lock_guard<std::mutex> lock(write_mutex_);
+
     if (!is_ready())
         throw CLIConnectionError("Transport is not ready for writing");
 
@@ -296,7 +299,15 @@ bool SubprocessTransport::has_messages() const
 
 void SubprocessTransport::close()
 {
-    ready_ = false;
+    {
+        // Coordinate with write/end_input so we do not close stdin while a write is in flight
+        std::lock_guard<std::mutex> lock(write_mutex_);
+        ready_ = false;
+
+        // Close process stdin first so the CLI can exit cleanly
+        if (process_ && process_->stdin_pipe().is_open())
+            process_->stdin_pipe().close();
+    }
 
     // Clean up temporary files first
     for (const auto& temp_file : temp_files_)
@@ -321,9 +332,6 @@ void SubprocessTransport::close()
     // Close process
     if (process_)
     {
-        if (process_->stdin_pipe().is_open())
-            process_->stdin_pipe().close();
-
         // Wait for process to exit
         auto exit_code = process_->try_wait();
         if (!exit_code)
@@ -356,6 +364,8 @@ bool SubprocessTransport::is_ready() const
 
 void SubprocessTransport::end_input()
 {
+    // End input in a thread-safe way (aligned with Python write lock behavior)
+    std::lock_guard<std::mutex> lock(write_mutex_);
     if (process_ && process_->stdin_pipe().is_open())
         process_->stdin_pipe().close();
 }
@@ -410,7 +420,7 @@ std::vector<std::string> SubprocessTransport::build_command() const
         args.push_back(""); // Empty string required by CLI
     }
 
-    // Allowed tools
+    // Allowed tools (permission rules)
     if (!options_.allowed_tools.empty())
     {
         std::string tools_str;
@@ -422,6 +432,30 @@ std::vector<std::string> SubprocessTransport::build_command() const
         }
         args.push_back("--allowedTools");
         args.push_back(tools_str);
+    }
+
+    // Base tools configuration (ClaudeAgentOptions.tools)
+    if (options_.tools.has_value())
+    {
+        // Explicit tools list – empty list disables all built-in tools
+        std::string tools_str;
+        const auto& tools = *options_.tools;
+        for (size_t i = 0; i < tools.size(); ++i)
+        {
+            if (i > 0)
+                tools_str += ",";
+            tools_str += tools[i];
+        }
+        args.push_back("--tools");
+        args.push_back(tools_str);
+    }
+    else if (options_.tools_preset.has_value())
+    {
+        // Preset mapping – "claude_code" preset maps to CLI "default"
+        std::string preset = *options_.tools_preset;
+        std::string cli_value = (preset == "claude_code") ? "default" : preset;
+        args.push_back("--tools");
+        args.push_back(cli_value);
     }
 
     // Max turns
@@ -464,6 +498,20 @@ std::vector<std::string> SubprocessTransport::build_command() const
     {
         args.push_back("--fallback-model");
         args.push_back(options_.fallback_model);
+    }
+
+    // Beta headers (ClaudeAgentOptions.betas)
+    if (!options_.betas.empty())
+    {
+        std::string betas_str;
+        for (size_t i = 0; i < options_.betas.size(); ++i)
+        {
+            if (i > 0)
+                betas_str += ",";
+            betas_str += options_.betas[i];
+        }
+        args.push_back("--betas");
+        args.push_back(betas_str);
     }
 
     // Permission prompt tool

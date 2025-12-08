@@ -424,6 +424,30 @@ std::vector<std::string> SubprocessCLITransport::build_command()
         cmd.push_back(""); // Empty string required by CLI
     }
 
+    // Base tools configuration (ClaudeAgentOptions.tools)
+    if (options_.tools.has_value())
+    {
+        // Explicit tools list – empty list disables all built-in tools
+        std::ostringstream oss;
+        const auto& tools = *options_.tools;
+        for (size_t i = 0; i < tools.size(); ++i)
+        {
+            if (i > 0)
+                oss << ",";
+            oss << tools[i];
+        }
+        cmd.push_back("--tools");
+        cmd.push_back(oss.str());
+    }
+    else if (options_.tools_preset.has_value())
+    {
+        // Preset mapping – "claude_code" preset maps to CLI "default"
+        std::string preset = *options_.tools_preset;
+        std::string cli_value = (preset == "claude_code") ? "default" : preset;
+        cmd.push_back("--tools");
+        cmd.push_back(cli_value);
+    }
+
     // Allowed tools
     if (!options_.allowed_tools.empty())
     {
@@ -464,6 +488,20 @@ std::vector<std::string> SubprocessCLITransport::build_command()
     {
         cmd.push_back("--fallback-model");
         cmd.push_back(options_.fallback_model);
+    }
+
+    // Beta headers (ClaudeAgentOptions.betas)
+    if (!options_.betas.empty())
+    {
+        std::ostringstream oss;
+        for (size_t i = 0; i < options_.betas.size(); ++i)
+        {
+            if (i > 0)
+                oss << ",";
+            oss << options_.betas[i];
+        }
+        cmd.push_back("--betas");
+        cmd.push_back(oss.str());
     }
 
     // Permission mode

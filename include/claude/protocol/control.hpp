@@ -80,6 +80,10 @@ class ControlProtocol
 
     // Reject a pending request with error
     void reject_request(const std::string& request_id, const std::string& error);
+
+  public:
+    // Reject all pending requests with a shared error (used on fatal transport failures)
+    void fail_all_pending(const std::string& error);
 };
 
 } // namespace protocol

@@ -485,6 +485,16 @@ struct ClaudeOptions
     std::string system_prompt;
     std::string system_prompt_append; // Append to default claude_code preset (mutually exclusive
                                       // with system_prompt)
+
+    // Base tools configuration (matches Python ClaudeAgentOptions.tools)
+    // - When unset, CLI default tool behavior is used.
+    // - When set to a list:
+    //     * Empty list => disable all built-in tools ("--tools" with empty value).
+    //     * Non-empty list => comma-separated list passed via "--tools".
+    // - When tools_preset is set to "claude_code", CLI "default" toolset is used.
+    std::optional<std::vector<std::string>> tools; // Optional base tools list
+    std::optional<std::string> tools_preset;       // Optional preset name (e.g., "claude_code")
+
     std::vector<std::string> allowed_tools;
     std::vector<std::string> disallowed_tools;
     std::string permission_mode; // "default", "acceptEdits", "plan", "bypassPermissions"
@@ -539,6 +549,10 @@ struct ClaudeOptions
     // Security: Maximum total bytes to read from CLI stdout in one operation (v0.1.11+)
     // Prevents unbounded reads from malicious/broken CLI. Default: 100MB
     size_t max_total_read_bytes = 100 * 1024 * 1024;
+
+    // SDK beta features (matches Python SdkBeta / ClaudeAgentOptions.betas)
+    // Values are forwarded to the CLI via the --betas flag as a comma-separated list.
+    std::vector<std::string> betas;
 
     // Plugin configurations
     // List of plugins to load. Each plugin is passed to CLI via --plugin-dir flag.
