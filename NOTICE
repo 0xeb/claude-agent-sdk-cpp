@@ -6,6 +6,8 @@ Copyright 2025 Elias Bachaalany
 
 This software is a C++ port of the claude-agent-sdk-python library.
 
+This project is an independent, unofficial port and is not affiliated with or endorsed by Anthropic, PBC.
+
 Original Work:
   claude-agent-sdk-python - Python SDK for Claude Agent
   Copyright (c) 2025 Anthropic, PBC
@@ -16,8 +18,8 @@ C++ Port:
   Author: Elias Bachaalany
   Repository: https://github.com/0xeb/claude-agent-sdk-cpp
 
-Attribution Requirement:
-  When using claude-agent-sdk-cpp, please include the following attribution:
+Attribution (appreciated):
+  If you find claude-agent-sdk-cpp useful, attribution is appreciated:
   "Uses claude-agent-sdk-cpp (https://github.com/0xeb/claude-agent-sdk-cpp) by Elias Bachaalany"
 
 This C++ port is a complete reimplementation providing:

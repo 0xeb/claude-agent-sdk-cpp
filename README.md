@@ -6,6 +6,8 @@ A modern C++17 library for interacting with the Claude Code CLI, providing both 
 [![C++17](https://img.shields.io/badge/C%2B%2B-17-blue)]()
 [![License](https://img.shields.io/badge/license-MIT-green)]()
 
+Disclaimer: This is an independent, unofficial port and is not affiliated with or endorsed by Anthropic, PBC.
+
 ## Features
 
 - Simple `query()` API for one‑shot requests.
@@ -162,12 +164,12 @@ See `include/claude/types.hpp` and `docs/api-reference.md` for full details.
 
 ## Status & Parity
 
-- **Current version:** 0.1.13 (see `include/claude/version.hpp`).
+- **Current version:** 0.1.15 (see `include/claude/version.hpp`).
 - **Status:** Production ready.
-- **Parity:** Designed to match the Python Claude Agent SDK 0.1.13 API, behavior, and ergonomics, including MCP template APIs and control protocol.
+- **Parity:** Designed to match the Python Claude Agent SDK 0.1.15 API, behavior, and ergonomics, including MCP template APIs and control protocol.
 - **Tests:** See `kb/status.md` in the management repo for up-to-date test counts and parity details.
 
-**Canonical rule:** The Python `claude-agent-sdk` is the canonical reference. This C++ port is expected to track its behavior and API (currently aligned with Python v0.1.13).
+**Canonical rule:** The Python `claude-agent-sdk` is the canonical reference. This C++ port is expected to track its behavior and API (currently aligned with Python v0.1.15).
 
 ## License
 
@@ -180,4 +182,3 @@ This is a C++ port of [claude-agent-sdk-python](https://github.com/anthropics/cl
 - Issues: use the GitHub issue tracker for this repository.
 - Documentation: see `docs/`.
 - Examples: see `examples/`.
-

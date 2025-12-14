@@ -1,6 +1,7 @@
 #include "subprocess_cli.hpp"
 
 #include "cli_verification.hpp"
+#include "subprocess_env.hpp"
 
 #include <chrono>
 #include <claude/errors.hpp>
@@ -219,9 +220,7 @@ void SubprocessCLITransport::connect()
         proc_opts.environment[key] = value;
 
     // SDK-specific variables (always set)
-    proc_opts.environment["CLAUDE_CODE_ENTRYPOINT"] = "sdk-cpp";
-    // Report the C++ SDK version to the CLI environment
-    proc_opts.environment["CLAUDE_AGENT_SDK_VERSION"] = version_string();
+    apply_sdk_environment(proc_opts, options_, "sdk-cpp");
 
     // Windows fix: .cmd files don't work with CreateProcess stdout redirection
     // If we found claude.cmd, call node.exe with cli.js directly
@@ -646,7 +645,8 @@ std::string SubprocessCLITransport::find_cli(const std::optional<std::string>& h
         namespace fs = std::filesystem;
 
         // Check file exists
-        if (!fs::exists(path))
+        std::error_code ec;
+        if (!fs::exists(path, ec) || ec)
             throw CLINotFoundError("CLI path does not exist: " + path);
 
         // Security: Check allowlist if configured
@@ -700,8 +700,11 @@ std::string SubprocessCLITransport::find_cli(const std::optional<std::string>& h
 #endif
 
     for (const auto& loc : locations)
-        if (std::filesystem::exists(loc))
+    {
+        std::error_code ec;
+        if (std::filesystem::exists(loc, ec) && !ec)
             return validate_cli_path(loc.string());
+    }
 
     throw CLINotFoundError("Claude Code not found. Install with:\n"
                            "  npm install -g @anthropic-ai/claude-code\n");

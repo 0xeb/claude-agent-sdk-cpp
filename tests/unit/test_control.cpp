@@ -234,4 +234,13 @@ TEST(ControlProtocolUnitTest, BuildRequestMessageVariousSubtypes)
         EXPECT_EQ(parsed["request"]["subtype"], "set_model");
         EXPECT_EQ(parsed["request"]["model"], "claude-opus-4");
     }
+
+    // Test rewind_files (v0.1.15)
+    {
+        claude::json data = {{"user_message_id", "msg_123"}};
+        auto message = protocol.build_request_message("rewind_files", data);
+        auto parsed = claude::json::parse(message);
+        EXPECT_EQ(parsed["request"]["subtype"], "rewind_files");
+        EXPECT_EQ(parsed["request"]["user_message_id"], "msg_123");
+    }
 }

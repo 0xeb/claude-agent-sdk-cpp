@@ -570,6 +570,7 @@ struct ClaudeOptions
     bool fork_session = false;                // Fork the session
     std::optional<int> max_thinking_tokens;   // v0.1.6: limit thinking tokens
     std::optional<json> output_format;        // v0.1.8: Structured output format (JSON schema)
+    bool enable_file_checkpointing = false;   // v0.1.15: enable file checkpointing/rewind_files
 
     // Control protocol hooks and callbacks
     /// Hook configurations organized by event type
