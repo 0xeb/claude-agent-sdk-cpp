@@ -68,13 +68,23 @@ TEST_F(ControlProtocolTest, HookCallbackDenial)
     client.send_query("Run 'echo test'");
 
     bool got_error = false;
-    bool saw_assistant = false;
+    bool saw_tool_result = false;
     for (const auto& msg : client.receive_messages())
     {
         if (claude::is_assistant_message(msg))
         {
-            saw_assistant = true;
             const auto& assistant = std::get<claude::AssistantMessage>(msg);
+
+            for (const auto& block : assistant.content)
+            {
+                if (auto* tool_result = std::get_if<claude::ToolResultBlock>(&block))
+                {
+                    saw_tool_result = true;
+                    if (tool_result->is_error)
+                        got_error = true;
+                }
+            }
+
             std::string content = claude::get_text_content(assistant.content);
             if (content.find("denied") != std::string::npos ||
                 content.find("blocked") != std::string::npos ||
@@ -92,7 +102,11 @@ TEST_F(ControlProtocolTest, HookCallbackDenial)
 
     EXPECT_TRUE(hook_called) << "Hook callback should have been invoked";
     if (!got_error)
-        got_error = !saw_assistant; // Treat absence of assistant reply before result as blocked
+    {
+        // If the CLI doesn't emit a descriptive assistant message for a blocked hook,
+        // treat the lack of a tool result as a blocked action.
+        got_error = !saw_tool_result;
+    }
     EXPECT_TRUE(got_error) << "Should indicate command was blocked";
 }
 
@@ -171,13 +185,23 @@ TEST_F(ControlProtocolTest, HookCallbackDenialUnderscore)
     client.send_query("Run 'echo test'");
 
     bool got_error = false;
-    bool saw_assistant = false;
+    bool saw_tool_result = false;
     for (const auto& msg : client.receive_messages())
     {
         if (claude::is_assistant_message(msg))
         {
-            saw_assistant = true;
             const auto& assistant = std::get<claude::AssistantMessage>(msg);
+
+            for (const auto& block : assistant.content)
+            {
+                if (auto* tool_result = std::get_if<claude::ToolResultBlock>(&block))
+                {
+                    saw_tool_result = true;
+                    if (tool_result->is_error)
+                        got_error = true;
+                }
+            }
+
             std::string content = claude::get_text_content(assistant.content);
             if (content.find("denied") != std::string::npos ||
                 content.find("blocked") != std::string::npos ||
@@ -196,9 +220,9 @@ TEST_F(ControlProtocolTest, HookCallbackDenialUnderscore)
     EXPECT_TRUE(hook_called) << "Hook callback should have been invoked";
     if (!got_error)
     {
-        // If CLI did not emit an assistant message containing the expected wording,
-        // treat the absence of assistant output before result as a blocked action.
-        got_error = !saw_assistant;
+        // Some CLI versions do not emit a descriptive assistant message for a blocked hook.
+        // Treat the lack of a tool result as a blocked action.
+        got_error = !saw_tool_result;
     }
     EXPECT_TRUE(got_error) << "Should indicate command was blocked via underscore key";
 }

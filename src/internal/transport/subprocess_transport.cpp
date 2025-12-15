@@ -1,6 +1,7 @@
 #include "subprocess_transport.hpp"
 
 #include "cli_verification.hpp"
+#include "subprocess_env.hpp"
 
 #include <chrono>
 #include <claude/errors.hpp>
@@ -234,8 +235,7 @@ void SubprocessTransport::connect()
         proc_opts.environment[key] = value;
 
     // SDK-specific variables (always set)
-    proc_opts.environment["CLAUDE_CODE_ENTRYPOINT"] = "sdk-py";
-    proc_opts.environment["CLAUDE_AGENT_SDK_VERSION"] = version_string();
+    apply_sdk_environment(proc_opts, options_, "sdk-py");
 
     // Spawn process
     process_ = std::make_unique<subprocess::Process>();
@@ -680,7 +680,8 @@ std::string SubprocessTransport::find_cli() const
         namespace fs = std::filesystem;
 
         // Check file exists
-        if (!fs::exists(path))
+        std::error_code ec;
+        if (!fs::exists(path, ec) || ec)
             throw CLINotFoundError("CLI path does not exist: " + path);
 
         // Security: Check allowlist if configured
@@ -719,7 +720,8 @@ std::string SubprocessTransport::find_cli() const
     {
         namespace fs = std::filesystem;
         fs::path local_cli = fs::path(home) / ".claude" / "local" / "claude";
-        if (fs::exists(local_cli))
+        std::error_code ec;
+        if (fs::exists(local_cli, ec) && !ec)
             return validate_cli_path(local_cli.string());
     }
 

@@ -822,6 +822,17 @@ void ClaudeClient::set_model(const std::string& model)
     impl_->control_protocol_->send_request(write_func, "set_model", request_data);
 }
 
+void ClaudeClient::rewind_files(const std::string& user_message_id)
+{
+    if (!is_connected())
+        throw CLIConnectionError("Not connected to Claude CLI");
+
+    auto write_func = [this](const std::string& data) { impl_->transport_->write(data); };
+
+    json request_data = {{"user_message_id", user_message_id}};
+    impl_->control_protocol_->send_request(write_func, "rewind_files", request_data);
+}
+
 std::optional<json> ClaudeClient::get_server_info() const
 {
     if (!impl_ || !impl_->connected_ || !impl_->initialized_)

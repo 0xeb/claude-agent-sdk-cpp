@@ -122,6 +122,7 @@ class ClaudeClient
     void interrupt();
     void set_permission_mode(const std::string& mode);
     void set_model(const std::string& model);
+    void rewind_files(const std::string& user_message_id);
 
     // Initialization info (parity with Python get_server_info())
     // Returns initialization data (commands, output styles, capabilities) if available.

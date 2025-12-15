@@ -167,6 +167,15 @@ void set_model(const std::string& model);
 
 Switches to a different Claude model mid-conversation.
 
+##### rewind_files()
+
+```cpp
+void rewind_files(const std::string& user_message_id);
+```
+
+Rewinds tracked files to their state at a specific user message ID. Requires
+`ClaudeOptions::enable_file_checkpointing = true`.
+
 ##### get_server_info()
 
 ```cpp
@@ -291,6 +300,7 @@ struct ClaudeOptions {
     // Optional explicit path to Claude CLI (overrides PATH)
     std::string cli_path;
     bool include_partial_messages = false;
+    bool enable_file_checkpointing = false; // v0.1.15: enable file checkpointing/rewind_files
 
     // Advanced settings
     std::string permission_prompt_tool_name;
