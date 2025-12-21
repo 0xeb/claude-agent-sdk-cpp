@@ -102,6 +102,8 @@ TEST(TypesTest, UserMessage)
     EXPECT_EQ(msg.type, "user");
     EXPECT_EQ(msg.role, "user");
     EXPECT_EQ(msg.content.size(), 1);
+    EXPECT_FALSE(msg.uuid.has_value());
+    EXPECT_FALSE(msg.parent_tool_use_id.has_value());
 }
 
 TEST(TypesTest, SystemMessage)

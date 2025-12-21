@@ -283,6 +283,8 @@ struct UserMessage
     std::string type = "user";
     std::string role = "user";
     std::vector<ContentBlock> content;
+    std::optional<std::string> uuid;               // v0.1.18: message UUID for rewind/checkpointing
+    std::optional<std::string> parent_tool_use_id; // v0.1.18: tool-use linkage (if present)
     json raw_json; // Original JSON from CLI (optional, for debugging)
 };
 

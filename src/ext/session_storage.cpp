@@ -219,6 +219,10 @@ json SessionWrapper::message_to_json(const Message& msg) const
         const auto& user = std::get<UserMessage>(msg);
         j["type"] = "user";
         j["content"] = content_to_json(user.content);
+        if (user.uuid.has_value())
+            j["uuid"] = *user.uuid;
+        if (user.parent_tool_use_id.has_value())
+            j["parent_tool_use_id"] = *user.parent_tool_use_id;
     }
     else if (std::holds_alternative<AssistantMessage>(msg))
     {
@@ -255,6 +259,10 @@ Message SessionWrapper::json_to_message(const json& j) const
     {
         UserMessage user;
         user.content = json_to_content(j["content"]);
+        if (j.contains("uuid") && j["uuid"].is_string())
+            user.uuid = j["uuid"].get<std::string>();
+        if (j.contains("parent_tool_use_id") && j["parent_tool_use_id"].is_string())
+            user.parent_tool_use_id = j["parent_tool_use_id"].get<std::string>();
         return user;
     }
     else if (type == "assistant")
