@@ -220,10 +220,32 @@ TEST(ParserTest, ParseUserMessage)
     ASSERT_TRUE(std::holds_alternative<UserMessage>(msg));
     auto& user = std::get<UserMessage>(msg);
     EXPECT_EQ(user.content.size(), 1);
+    EXPECT_FALSE(user.uuid.has_value());
+    EXPECT_FALSE(user.parent_tool_use_id.has_value());
 
     auto* text = std::get_if<TextBlock>(&user.content[0]);
     ASSERT_NE(text, nullptr);
     EXPECT_EQ(text->text, "User message");
+}
+
+TEST(ParserTest, ParseUserMessageWithUuid)
+{
+    std::string json =
+        R"({"type":"user","uuid":"msg-abc123-def456","parent_tool_use_id":"tool_123","message":{"content":[{"type":"text","text":"Hello"}]}})";
+
+    Message msg = MessageParser::parse_message(json);
+
+    ASSERT_TRUE(std::holds_alternative<UserMessage>(msg));
+    auto& user = std::get<UserMessage>(msg);
+    ASSERT_TRUE(user.uuid.has_value());
+    EXPECT_EQ(*user.uuid, "msg-abc123-def456");
+    ASSERT_TRUE(user.parent_tool_use_id.has_value());
+    EXPECT_EQ(*user.parent_tool_use_id, "tool_123");
+
+    EXPECT_EQ(user.content.size(), 1);
+    auto* text = std::get_if<TextBlock>(&user.content[0]);
+    ASSERT_NE(text, nullptr);
+    EXPECT_EQ(text->text, "Hello");
 }
 
 TEST(ParserTest, ParseMultipleLinesNewline)

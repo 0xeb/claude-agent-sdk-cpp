@@ -1,7 +1,11 @@
+#include "../../src/internal/subprocess/process.hpp"
+
 #include <atomic>
 #include <claude/client.hpp>
+#include <cstdlib>
 #include <gtest/gtest.h>
 #include <mutex>
+#include <optional>
 #include <thread>
 #include <vector>
 
@@ -32,6 +36,39 @@ using namespace claude;
 
 namespace
 {
+
+std::optional<std::string> cli_skip_reason()
+{
+    if (std::getenv("CLAUDE_AGENT_SDK_REQUIRE_EXPLICIT_CLI") != nullptr &&
+        (std::getenv("CLAUDE_CLI_PATH") == nullptr || std::getenv("CLAUDE_CLI_PATH")[0] == '\0'))
+    {
+        return std::string(
+            "CLAUDE_AGENT_SDK_REQUIRE_EXPLICIT_CLI is set; set CLAUDE_CLI_PATH to run this test.");
+    }
+
+    if (const char* env_cli = std::getenv("CLAUDE_CLI_PATH");
+        env_cli != nullptr && env_cli[0] != '\0')
+        return std::nullopt;
+
+    if (!claude::subprocess::find_executable("claude").has_value())
+        return std::string("Claude CLI not found in PATH; install it or set CLAUDE_CLI_PATH.");
+
+    return std::nullopt;
+}
+
+ClaudeOptions make_thread_client_options()
+{
+    ClaudeOptions opts;
+    opts.permission_mode = "bypassPermissions";
+
+    if (const char* env_cli = std::getenv("CLAUDE_CLI_PATH");
+        env_cli != nullptr && env_cli[0] != '\0')
+        opts.cli_path = env_cli;
+    else if (auto found = claude::subprocess::find_executable("claude"))
+        opts.cli_path = *found;
+
+    return opts;
+}
 
 // Thread-safe result collector
 struct ThreadResult
@@ -76,10 +113,7 @@ void worker_thread(int thread_id, ThreadResultCollector& collector)
 {
     try
     {
-        ClaudeOptions opts;
-        opts.permission_mode = "bypassPermissions";
-
-        ClaudeClient client(opts);
+        ClaudeClient client(make_thread_client_options());
         client.connect();
 
         // Each thread asks a different simple question
@@ -148,6 +182,9 @@ void worker_thread(int thread_id, ThreadResultCollector& collector)
 
 TEST(MultithreadingTest, MultipleClientsSequential)
 {
+    if (auto reason = cli_skip_reason())
+        GTEST_SKIP() << *reason;
+
     // First test: Create multiple clients sequentially (not in threads)
     // This verifies basic multi-client support
     const int num_clients = 3;
@@ -168,6 +205,9 @@ TEST(MultithreadingTest, MultipleClientsSequential)
 
 TEST(MultithreadingTest, DISABLED_MultipleClientsParallel)
 {
+    if (auto reason = cli_skip_reason())
+        GTEST_SKIP() << *reason;
+
     // Main test: Create multiple clients in parallel threads
     // Note: Each client spawns a Claude CLI subprocess, so this is resource-intensive
     const int num_threads = 3;
@@ -197,6 +237,9 @@ TEST(MultithreadingTest, DISABLED_MultipleClientsParallel)
 
 TEST(MultithreadingTest, DISABLED_ConcurrentQueriesStressTest)
 {
+    if (auto reason = cli_skip_reason())
+        GTEST_SKIP() << *reason;
+
     // Stress test: More threads doing shorter operations
     // DISABLED by default due to long runtime (~2-5 minutes)
     // Enable with: --gtest_also_run_disabled_tests
@@ -210,10 +253,7 @@ TEST(MultithreadingTest, DISABLED_ConcurrentQueriesStressTest)
     {
         try
         {
-            ClaudeOptions opts;
-            opts.permission_mode = "bypassPermissions";
-
-            ClaudeClient client(opts);
+            ClaudeClient client(make_thread_client_options());
             client.connect();
 
             // Track active clients
@@ -282,6 +322,9 @@ TEST(MultithreadingTest, DISABLED_ConcurrentQueriesStressTest)
 
 TEST(MultithreadingTest, ClientLifetimeInThread)
 {
+    if (auto reason = cli_skip_reason())
+        GTEST_SKIP() << *reason;
+
     // Test client creation, usage, and destruction within a thread
     std::atomic<bool> test_passed{false};
     std::string error_message;

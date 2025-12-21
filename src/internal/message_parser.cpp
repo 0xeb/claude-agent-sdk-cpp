@@ -200,6 +200,11 @@ UserMessage MessageParser::parse_user_message(const claude::json& j)
     UserMessage msg;
     msg.raw_json = j; // Store original JSON
 
+    if (j.contains("uuid") && j["uuid"].is_string())
+        msg.uuid = j["uuid"].get<std::string>();
+    if (j.contains("parent_tool_use_id") && j["parent_tool_use_id"].is_string())
+        msg.parent_tool_use_id = j["parent_tool_use_id"].get<std::string>();
+
     // The CLI may wrap the actual message in a "message" field
     const claude::json* message_ptr = &j;
     if (j.contains("message"))
