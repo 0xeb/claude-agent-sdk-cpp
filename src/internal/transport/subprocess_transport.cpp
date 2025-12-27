@@ -593,9 +593,7 @@ std::vector<std::string> SubprocessTransport::build_command() const
 
         // Add SDK MCP handlers as type: "sdk" servers
         for (const auto& [name, handler] : options_.sdk_mcp_handlers)
-        {
             mcp_servers[name] = json{{"type", "sdk"}, {"name", name}};
-        }
 
         // Pass merged config if we have any servers
         if (!mcp_servers.empty())

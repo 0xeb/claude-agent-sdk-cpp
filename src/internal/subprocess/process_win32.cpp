@@ -70,10 +70,9 @@ static std::string quote_if_needed(const std::string& arg)
         for (char c : arg)
         {
             // Space, tab, and cmd.exe special characters
-            if (c == ' ' || c == '\t' || c == '"' || c == '{' || c == '}' ||
-                c == '(' || c == ')' || c == '[' || c == ']' || c == '<' ||
-                c == '>' || c == '|' || c == '&' || c == '^' || c == '%' ||
-                c == '!' || c == ',' || c == ';' || c == '=' || c == ':')
+            if (c == ' ' || c == '\t' || c == '"' || c == '{' || c == '}' || c == '(' || c == ')' ||
+                c == '[' || c == ']' || c == '<' || c == '>' || c == '|' || c == '&' || c == '^' ||
+                c == '%' || c == '!' || c == ',' || c == ';' || c == '=' || c == ':')
             {
                 needs_quotes = true;
                 break;

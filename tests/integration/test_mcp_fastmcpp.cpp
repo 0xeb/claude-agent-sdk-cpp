@@ -120,9 +120,7 @@ TEST(FastmcppIntegration, UseHandlerWithClaudeClient)
                 {
                     const auto& tool_use = std::get<ToolUseBlock>(block);
                     if (tool_use.name.find("add") != std::string::npos)
-                    {
                         found_tool_use = true;
-                    }
                 }
             }
         }
@@ -136,12 +134,11 @@ TEST(FastmcppIntegration, UseHandlerWithClaudeClient)
     EXPECT_TRUE(found_result) << "Should receive result message";
     // Verify tool was used OR response contains the expected sum
     // (Claude might not expose tool_use blocks in all output formats)
-    bool tool_verified = found_tool_use ||
-                         response_text.find("30") != std::string::npos;
-    EXPECT_TRUE(tool_verified)
-        << "Tool should be used (found_tool_use=" << found_tool_use
-        << ", response contains '30': " << (response_text.find("30") != std::string::npos)
-        << ", response: " << response_text << ")";
+    bool tool_verified = found_tool_use || response_text.find("30") != std::string::npos;
+    EXPECT_TRUE(tool_verified) << "Tool should be used (found_tool_use=" << found_tool_use
+                               << ", response contains '30': "
+                               << (response_text.find("30") != std::string::npos)
+                               << ", response: " << response_text << ")";
 
     client.disconnect();
 }
