@@ -63,8 +63,23 @@ static std::string get_last_error_message()
 static std::string quote_if_needed(const std::string& arg)
 {
     // Check if argument needs quoting (contains spaces or special chars)
-    bool needs_quotes =
-        arg.empty() || arg.find(' ') != std::string::npos || arg.find('\t') != std::string::npos;
+    // On Windows, many characters are special in cmd.exe and need quoting
+    bool needs_quotes = arg.empty();
+    if (!needs_quotes)
+    {
+        for (char c : arg)
+        {
+            // Space, tab, and cmd.exe special characters
+            if (c == ' ' || c == '\t' || c == '"' || c == '{' || c == '}' ||
+                c == '(' || c == ')' || c == '[' || c == ']' || c == '<' ||
+                c == '>' || c == '|' || c == '&' || c == '^' || c == '%' ||
+                c == '!' || c == ',' || c == ';' || c == '=' || c == ':')
+            {
+                needs_quotes = true;
+                break;
+            }
+        }
+    }
 
     if (!needs_quotes)
         return arg;

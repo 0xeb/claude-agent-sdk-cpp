@@ -92,7 +92,8 @@ TEST(FastmcppIntegration, UseHandlerWithClaudeClient)
     // Register with cppclient
     ClaudeOptions opts;
     opts.permission_mode = "bypassPermissions";
-    opts.allowed_tools = {"add"};
+    // Note: allowed_tools must use mcp__<server>__<tool> format
+    opts.allowed_tools = {"mcp__calc__add"};
     opts.sdk_mcp_handlers["calc"] = handler;
 
     // Create client and send a query
@@ -102,8 +103,29 @@ TEST(FastmcppIntegration, UseHandlerWithClaudeClient)
     client.send_query("Use the calc tool to add 10 and 20. Just give me the result.");
 
     bool found_result = false;
+    bool found_tool_use = false;
+    std::string response_text;
+
     for (const auto& msg : client.receive_messages())
     {
+        if (is_assistant_message(msg))
+        {
+            const auto& assistant = std::get<AssistantMessage>(msg);
+            response_text = get_text_content(assistant.content);
+
+            // Check if any tool was used
+            for (const auto& block : assistant.content)
+            {
+                if (std::holds_alternative<ToolUseBlock>(block))
+                {
+                    const auto& tool_use = std::get<ToolUseBlock>(block);
+                    if (tool_use.name.find("add") != std::string::npos)
+                    {
+                        found_tool_use = true;
+                    }
+                }
+            }
+        }
         if (is_result_message(msg))
         {
             found_result = true;
@@ -111,7 +133,15 @@ TEST(FastmcppIntegration, UseHandlerWithClaudeClient)
         }
     }
 
-    EXPECT_TRUE(found_result);
+    EXPECT_TRUE(found_result) << "Should receive result message";
+    // Verify tool was used OR response contains the expected sum
+    // (Claude might not expose tool_use blocks in all output formats)
+    bool tool_verified = found_tool_use ||
+                         response_text.find("30") != std::string::npos;
+    EXPECT_TRUE(tool_verified)
+        << "Tool should be used (found_tool_use=" << found_tool_use
+        << ", response contains '30': " << (response_text.find("30") != std::string::npos)
+        << ", response: " << response_text << ")";
 
     client.disconnect();
 }

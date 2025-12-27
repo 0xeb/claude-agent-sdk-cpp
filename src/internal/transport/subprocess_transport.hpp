@@ -93,8 +93,8 @@ class SubprocessTransport : public Transport
     std::atomic<bool> stderr_running_{false};
 
     // Temporary files for command line optimization
-    // Tracks temp files created for --agents JSON when command line is too long
-    std::vector<std::string> temp_files_;
+    // Tracks temp files created for --agents and --mcp-config JSON
+    mutable std::vector<std::string> temp_files_;
 };
 
 } // namespace internal

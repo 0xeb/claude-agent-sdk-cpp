@@ -435,7 +435,6 @@ class ClaudeClient::Impl
             // Expected request.request payload: { server_name: string, message: object }
             std::string server_name = request.request.value("server_name", "");
             json mcp_message = request.request.value("message", json::object());
-
             json response_envelope = {{"type", "control_response"},
                                       {"response",
                                        {{"subtype", "error"},
@@ -451,37 +450,9 @@ class ClaudeClient::Impl
                 if (it == options_.sdk_mcp_handlers.end())
                     throw std::runtime_error("No SDK MCP handler for server: " + server_name);
 
-                // Optional: enforce allowed_tools for tools/call
-                std::string method = mcp_message.value("method", "");
-                if (method == "tools/call")
-                {
-                    json params = mcp_message.value("params", json::object());
-                    std::string tool_name = params.value("name", "");
-                    if (!options_.allowed_tools.empty())
-                    {
-                        bool allowed =
-                            std::find(options_.allowed_tools.begin(), options_.allowed_tools.end(),
-                                      tool_name) != options_.allowed_tools.end();
-                        if (!allowed)
-                        {
-                            // Return JSON-RPC error response
-                            json error_resp = {
-                                {"jsonrpc", "2.0"},
-                                {"id", mcp_message.value("id", nullptr)},
-                                {"error",
-                                 {{"code", -32603},
-                                  {"message", std::string("Tool not allowed: ") + tool_name}}}};
-
-                            json success = {{"type", "control_response"},
-                                            {"response",
-                                             {{"subtype", "success"},
-                                              {"request_id", request.request_id},
-                                              {"response", {{"mcp_response", error_resp}}}}}};
-                            send_control_response(success);
-                            return;
-                        }
-                    }
-                }
+                // Note: allowed_tools enforcement is done by the CLI, not here.
+                // The CLI already prefixes MCP tool names (mcp__<server>__<tool>) and
+                // checks permissions before sending the tools/call request to the SDK.
 
                 // Invoke handler
                 json mcp_response = it->second(mcp_message);

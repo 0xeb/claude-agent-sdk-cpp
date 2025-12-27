@@ -30,11 +30,12 @@ constexpr size_t CMD_LENGTH_LIMIT = 100000;
 
 namespace
 {
-std::string write_agents_temp_file(const std::string& contents,
-                                   std::vector<std::string>& temp_files)
+// Write contents to a temp file with the given prefix, returning the file path
+std::string write_temp_file(const std::string& prefix, const std::string& contents,
+                            std::vector<std::string>& temp_files)
 {
     namespace fs = std::filesystem;
-    auto make_name = []
+    auto make_name = [&prefix]
     {
         std::random_device rd;
         std::mt19937 gen(rd());
@@ -43,8 +44,9 @@ std::string write_agents_temp_file(const std::string& contents,
         std::string hex(8, '0');
         for (auto& c : hex)
             c = digits[dist(gen)];
-        return std::string("claude_agents-") + hex + ".json";
+        return prefix + hex + ".json";
     };
+
     // Security: Prevent symlink attacks with TOCTOU-safe file creation
     fs::path temp_file;
     int max_attempts = 10;
@@ -89,6 +91,18 @@ std::string write_agents_temp_file(const std::string& contents,
 
     throw std::runtime_error("Failed to create secure temp file after " +
                              std::to_string(max_attempts) + " attempts");
+}
+
+std::string write_agents_temp_file(const std::string& contents,
+                                   std::vector<std::string>& temp_files)
+{
+    return write_temp_file("claude_agents-", contents, temp_files);
+}
+
+std::string write_mcp_config_temp_file(const std::string& contents,
+                                       std::vector<std::string>& temp_files)
+{
+    return write_temp_file("claude_mcp_config-", contents, temp_files);
 }
 } // namespace
 
@@ -607,6 +621,50 @@ std::vector<std::string> SubprocessCLITransport::build_command()
         {
             cmd.push_back("--plugin-dir");
             cmd.push_back(plugin.path);
+        }
+    }
+
+    // MCP configuration - merge external mcp_config with SDK MCP handlers
+    {
+        json mcp_servers = json::object();
+        bool has_parsed_config = false;
+
+        // Parse existing mcp_config if provided (external MCP servers)
+        if (!options_.mcp_config.empty())
+        {
+            try
+            {
+                json existing = json::parse(options_.mcp_config);
+                if (existing.contains("mcpServers") && existing["mcpServers"].is_object())
+                {
+                    mcp_servers = existing["mcpServers"];
+                    has_parsed_config = true;
+                }
+            }
+            catch (const json::parse_error&)
+            {
+                // mcp_config might be a file path, will pass it directly later
+            }
+        }
+
+        // Add SDK MCP handlers as type: "sdk" servers
+        for (const auto& [name, handler] : options_.sdk_mcp_handlers)
+        {
+            mcp_servers[name] = json{{"type", "sdk"}, {"name", name}};
+        }
+
+        // Pass merged config if we have any servers
+        if (!mcp_servers.empty())
+        {
+            json mcp_config = json{{"mcpServers", mcp_servers}};
+            cmd.push_back("--mcp-config");
+            cmd.push_back(mcp_config.dump());
+        }
+        else if (!options_.mcp_config.empty() && !has_parsed_config)
+        {
+            // mcp_config is a file path, pass directly
+            cmd.push_back("--mcp-config");
+            cmd.push_back(options_.mcp_config);
         }
     }
 
