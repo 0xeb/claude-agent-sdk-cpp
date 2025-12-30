@@ -1,4 +1,5 @@
 #include "../../src/internal/subprocess/process.hpp"
+#include "../test_utils.hpp"
 
 #include <atomic>
 #include <claude/client.hpp>
@@ -22,16 +23,13 @@ using namespace claude;
 // - Each ClaudeClient spawns its own Claude CLI subprocess
 // - Running many concurrent CLI instances is resource-intensive
 // - Tests may be slower than typical unit tests due to subprocess overhead
-// - Some tests are DISABLED by default due to long runtime
+// - Stress tests use SKIP_IN_CI() due to long runtime
 //
 // TEST CATEGORIES:
 // 1. MultipleClientsSequential    - Baseline: clients created one after another
 // 2. MultipleClientsParallel      - Main test: 3 concurrent client threads
-// 3. DISABLED_ConcurrentQueries   - Stress test: 5 concurrent threads (disabled)
+// 3. ConcurrentQueriesStressTest  - Stress test: 5 concurrent threads
 // 4. ClientLifetimeInThread       - Verifies client creation/destruction in thread
-//
-// To run disabled tests:
-//   ./test_claude --gtest_also_run_disabled_tests --gtest_filter="MultithreadingTest.*"
 // ============================================================================
 
 namespace
@@ -185,6 +183,8 @@ TEST(MultithreadingTest, MultipleClientsSequential)
     if (auto reason = cli_skip_reason())
         GTEST_SKIP() << *reason;
 
+    SKIP_IN_CI();
+
     // First test: Create multiple clients sequentially (not in threads)
     // This verifies basic multi-client support
     const int num_clients = 3;
@@ -203,10 +203,12 @@ TEST(MultithreadingTest, MultipleClientsSequential)
     }
 }
 
-TEST(MultithreadingTest, DISABLED_MultipleClientsParallel)
+TEST(MultithreadingTest, MultipleClientsParallel)
 {
     if (auto reason = cli_skip_reason())
         GTEST_SKIP() << *reason;
+
+    SKIP_IN_CI();
 
     // Main test: Create multiple clients in parallel threads
     // Note: Each client spawns a Claude CLI subprocess, so this is resource-intensive
@@ -235,14 +237,15 @@ TEST(MultithreadingTest, DISABLED_MultipleClientsParallel)
     }
 }
 
-TEST(MultithreadingTest, DISABLED_ConcurrentQueriesStressTest)
+TEST(MultithreadingTest, ConcurrentQueriesStressTest)
 {
     if (auto reason = cli_skip_reason())
         GTEST_SKIP() << *reason;
 
+    SKIP_IN_CI();
+
     // Stress test: More threads doing shorter operations
-    // DISABLED by default due to long runtime (~2-5 minutes)
-    // Enable with: --gtest_also_run_disabled_tests
+    // Skipped in CI due to long runtime (~2-5 minutes)
     const int num_threads = 5;
     ThreadResultCollector collector;
     std::vector<std::thread> threads;
@@ -324,6 +327,8 @@ TEST(MultithreadingTest, ClientLifetimeInThread)
 {
     if (auto reason = cli_skip_reason())
         GTEST_SKIP() << *reason;
+
+    SKIP_IN_CI();
 
     // Test client creation, usage, and destruction within a thread
     std::atomic<bool> test_passed{false};

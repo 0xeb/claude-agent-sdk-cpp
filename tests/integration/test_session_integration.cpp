@@ -1,3 +1,5 @@
+#include "../test_utils.hpp"
+
 #include <chrono>
 #include <claude/client.hpp>
 #include <claude/errors.hpp>
@@ -10,10 +12,7 @@
 using namespace claude;
 
 // Integration tests for session management
-// Tests session creation, resume, and conversation continuity
-//
-// Tests are DISABLED by default for CI, enable manually with:
-//   --gtest_also_run_disabled_tests --gtest_filter="SessionIntegration*"
+// Skipped in CI (live API tests), enabled locally
 
 class SessionIntegrationTest : public ::testing::Test
 {
@@ -54,8 +53,10 @@ class SessionIntegrationTest : public ::testing::Test
 };
 
 // Test 1: Session ID is returned from query
-TEST_F(SessionIntegrationTest, DISABLED_SessionIdReturned)
+TEST_F(SessionIntegrationTest, SessionIdReturned)
 {
+    SKIP_IN_CI();
+
     ClaudeOptions opts;
     opts.permission_mode = "bypassPermissions";
 
@@ -70,8 +71,10 @@ TEST_F(SessionIntegrationTest, DISABLED_SessionIdReturned)
 }
 
 // Test 2: Resume a session and continue conversation
-TEST_F(SessionIntegrationTest, DISABLED_ResumeSession)
+TEST_F(SessionIntegrationTest, ResumeSession)
 {
+    SKIP_IN_CI();
+
     ClaudeOptions opts;
     opts.permission_mode = "bypassPermissions";
 
@@ -103,8 +106,10 @@ TEST_F(SessionIntegrationTest, DISABLED_ResumeSession)
 }
 
 // Test 3: Multiple turns in same session via session_id
-TEST_F(SessionIntegrationTest, DISABLED_MultiTurnConversation)
+TEST_F(SessionIntegrationTest, MultiTurnConversation)
 {
+    SKIP_IN_CI();
+
     ClaudeOptions opts;
     opts.permission_mode = "bypassPermissions";
 
@@ -144,8 +149,10 @@ TEST_F(SessionIntegrationTest, DISABLED_MultiTurnConversation)
 }
 
 // Test 4: Session with conversation_id
-TEST_F(SessionIntegrationTest, DISABLED_ConversationId)
+TEST_F(SessionIntegrationTest, ConversationId)
 {
+    SKIP_IN_CI();
+
     ClaudeOptions opts;
     opts.permission_mode = "bypassPermissions";
 
@@ -170,8 +177,10 @@ TEST_F(SessionIntegrationTest, DISABLED_ConversationId)
 }
 
 // Test 5: New session each time (no resume)
-TEST_F(SessionIntegrationTest, DISABLED_NewSessionEachQuery)
+TEST_F(SessionIntegrationTest, NewSessionEachQuery)
 {
+    SKIP_IN_CI();
+
     ClaudeOptions opts;
     opts.permission_mode = "bypassPermissions";
 
@@ -189,8 +198,10 @@ TEST_F(SessionIntegrationTest, DISABLED_NewSessionEachQuery)
 }
 
 // Test 6: Session with usage tracking
-TEST_F(SessionIntegrationTest, DISABLED_SessionUsageTracking)
+TEST_F(SessionIntegrationTest, SessionUsageTracking)
 {
+    SKIP_IN_CI();
+
     ClaudeOptions opts;
     opts.permission_mode = "bypassPermissions";
 
@@ -225,8 +236,10 @@ TEST_F(SessionIntegrationTest, DISABLED_SessionUsageTracking)
 
 // Test 7: Multi-turn using ClaudeClient (alternative to query() + opts.resume)
 // Shows persistent connection pattern vs separate calls
-TEST_F(SessionIntegrationTest, DISABLED_ClientMultiTurnSession)
+TEST_F(SessionIntegrationTest, ClientMultiTurnSession)
 {
+    SKIP_IN_CI();
+
     ClaudeOptions opts;
     opts.permission_mode = "bypassPermissions";
 

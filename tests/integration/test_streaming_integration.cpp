@@ -1,3 +1,5 @@
+#include "../test_utils.hpp"
+
 #include <claude/client.hpp>
 #include <claude/errors.hpp>
 #include <claude/query.hpp>
@@ -9,10 +11,7 @@
 using namespace claude;
 
 // Integration tests for ClaudeClient streaming and message handling
-// Tests both the simple query() API and the full ClaudeClient API
-//
-// Tests are DISABLED by default for CI, enable manually with:
-//   --gtest_also_run_disabled_tests --gtest_filter="StreamingIntegration*"
+// Skipped in CI (live API tests), enabled locally
 
 class StreamingIntegrationTest : public ::testing::Test
 {
@@ -28,8 +27,10 @@ class StreamingIntegrationTest : public ::testing::Test
 };
 
 // Test 1: ClaudeClient basic connect/query/disconnect
-TEST_F(StreamingIntegrationTest, DISABLED_ClientBasicUsage)
+TEST_F(StreamingIntegrationTest, ClientBasicUsage)
 {
+    SKIP_IN_CI();
+
     ClaudeOptions opts;
     opts.permission_mode = "bypassPermissions";
 
@@ -60,8 +61,10 @@ TEST_F(StreamingIntegrationTest, DISABLED_ClientBasicUsage)
 }
 
 // Test 2: ClaudeClient multi-turn conversation
-TEST_F(StreamingIntegrationTest, DISABLED_ClientMultiTurn)
+TEST_F(StreamingIntegrationTest, ClientMultiTurn)
 {
+    SKIP_IN_CI();
+
     ClaudeOptions opts;
     opts.permission_mode = "bypassPermissions";
 
@@ -90,8 +93,10 @@ TEST_F(StreamingIntegrationTest, DISABLED_ClientMultiTurn)
 }
 
 // Test 3: ClaudeClient receive_response() blocking API
-TEST_F(StreamingIntegrationTest, DISABLED_ClientReceiveResponse)
+TEST_F(StreamingIntegrationTest, ClientReceiveResponse)
 {
+    SKIP_IN_CI();
+
     ClaudeOptions opts;
     opts.permission_mode = "bypassPermissions";
 
@@ -121,8 +126,10 @@ TEST_F(StreamingIntegrationTest, DISABLED_ClientReceiveResponse)
 }
 
 // Test 4: Compare query() vs ClaudeClient (both should work)
-TEST_F(StreamingIntegrationTest, DISABLED_QueryVsClient)
+TEST_F(StreamingIntegrationTest, QueryVsClient)
 {
+    SKIP_IN_CI();
+
     ClaudeOptions opts;
     opts.permission_mode = "bypassPermissions";
 
@@ -151,8 +158,10 @@ TEST_F(StreamingIntegrationTest, DISABLED_QueryVsClient)
 }
 
 // Test 5: ClaudeClient get_pid() and server info
-TEST_F(StreamingIntegrationTest, DISABLED_ClientProcessInfo)
+TEST_F(StreamingIntegrationTest, ClientProcessInfo)
 {
+    SKIP_IN_CI();
+
     ClaudeOptions opts;
     opts.permission_mode = "bypassPermissions";
 

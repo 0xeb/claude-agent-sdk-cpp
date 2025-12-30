@@ -1,14 +1,18 @@
+#include "../test_utils.hpp"
+
 #include <claude/errors.hpp>
 #include <claude/query.hpp>
 #include <gtest/gtest.h>
 
 using namespace claude;
 
-// These tests require Claude CLI to be installed
-// Mark as disabled by default, enable manually
+// Integration tests for query() function
+// Skipped in CI (live API tests), enabled locally
 
-TEST(QueryTest, DISABLED_BasicQuery)
+TEST(QueryTest, BasicQuery)
 {
+    SKIP_IN_CI();
+
     ClaudeOptions opts;
     opts.permission_mode = "bypassPermissions";
 
@@ -34,8 +38,10 @@ TEST(QueryTest, DISABLED_BasicQuery)
     EXPECT_TRUE(found_assistant);
 }
 
-TEST(QueryTest, DISABLED_WithOptions)
+TEST(QueryTest, WithOptions)
 {
+    SKIP_IN_CI();
+
     ClaudeOptions opts;
     opts.model = "claude-sonnet-4-5";
     opts.permission_mode = "bypassPermissions";
@@ -46,8 +52,10 @@ TEST(QueryTest, DISABLED_WithOptions)
     EXPECT_GT(result.messages().size(), 0);
 }
 
-TEST(QueryTest, DISABLED_ErrorHandling)
+TEST(QueryTest, ErrorHandling)
 {
+    SKIP_IN_CI();
+
     ClaudeOptions opts;
     opts.permission_mode = "bypassPermissions";
 
@@ -55,8 +63,10 @@ TEST(QueryTest, DISABLED_ErrorHandling)
     EXPECT_THROW(query("", opts), ClaudeError);
 }
 
-TEST(QueryTest, DISABLED_ResultMessage)
+TEST(QueryTest, ResultMessage)
 {
+    SKIP_IN_CI();
+
     ClaudeOptions opts;
     opts.permission_mode = "bypassPermissions";
 
@@ -80,8 +90,10 @@ TEST(QueryTest, DISABLED_ResultMessage)
     EXPECT_TRUE(found_result);
 }
 
-TEST(QueryTest, DISABLED_IteratorPattern)
+TEST(QueryTest, IteratorPattern)
 {
+    SKIP_IN_CI();
+
     ClaudeOptions opts;
     opts.permission_mode = "bypassPermissions";
 

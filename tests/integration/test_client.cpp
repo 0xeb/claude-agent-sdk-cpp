@@ -1,3 +1,5 @@
+#include "../test_utils.hpp"
+
 #include <chrono>
 #include <claude/client.hpp>
 #include <gtest/gtest.h>
@@ -5,10 +7,13 @@
 
 using namespace claude;
 
-// Integration tests for ClaudeClient (DISABLED by default, enable manually)
+// Integration tests for ClaudeClient
+// Skipped in CI (live API tests), enabled locally
 
-TEST(ClientIntegrationTest, DISABLED_ConnectDisconnect)
+TEST(ClientIntegrationTest, ConnectDisconnect)
 {
+    SKIP_IN_CI();
+
     ClaudeOptions opts;
     opts.permission_mode = "bypassPermissions";
 
@@ -23,8 +28,10 @@ TEST(ClientIntegrationTest, DISABLED_ConnectDisconnect)
     EXPECT_FALSE(client.is_connected());
 }
 
-TEST(ClientIntegrationTest, DISABLED_SingleQuery)
+TEST(ClientIntegrationTest, SingleQuery)
 {
+    SKIP_IN_CI();
+
     ClaudeOptions opts;
     opts.permission_mode = "bypassPermissions";
 
@@ -54,8 +61,10 @@ TEST(ClientIntegrationTest, DISABLED_SingleQuery)
     client.disconnect();
 }
 
-TEST(ClientIntegrationTest, DISABLED_MultipleQueries)
+TEST(ClientIntegrationTest, MultipleQueries)
 {
+    SKIP_IN_CI();
+
     ClaudeOptions opts;
     opts.permission_mode = "bypassPermissions";
 
@@ -87,8 +96,10 @@ TEST(ClientIntegrationTest, DISABLED_MultipleQueries)
     client.disconnect();
 }
 
-TEST(ClientIntegrationTest, DISABLED_StreamingMessages)
+TEST(ClientIntegrationTest, StreamingMessages)
 {
+    SKIP_IN_CI();
+
     ClaudeOptions opts;
     opts.permission_mode = "bypassPermissions";
 
@@ -118,8 +129,10 @@ TEST(ClientIntegrationTest, DISABLED_StreamingMessages)
     client.disconnect();
 }
 
-TEST(ClientIntegrationTest, DISABLED_MessageStreamIterator)
+TEST(ClientIntegrationTest, MessageStreamIterator)
 {
+    SKIP_IN_CI();
+
     ClaudeOptions opts;
     opts.permission_mode = "bypassPermissions";
 
@@ -151,8 +164,10 @@ TEST(ClientIntegrationTest, DISABLED_MessageStreamIterator)
     client.disconnect();
 }
 
-TEST(ClientIntegrationTest, DISABLED_MoveConstructor)
+TEST(ClientIntegrationTest, MoveConstructor)
 {
+    SKIP_IN_CI();
+
     ClaudeOptions opts;
     opts.permission_mode = "bypassPermissions";
 
@@ -167,8 +182,10 @@ TEST(ClientIntegrationTest, DISABLED_MoveConstructor)
     client2.disconnect();
 }
 
-TEST(ClientIntegrationTest, DISABLED_MoveAssignment)
+TEST(ClientIntegrationTest, MoveAssignment)
 {
+    SKIP_IN_CI();
+
     ClaudeOptions opts;
     opts.permission_mode = "bypassPermissions";
 
@@ -184,8 +201,10 @@ TEST(ClientIntegrationTest, DISABLED_MoveAssignment)
     client2.disconnect();
 }
 
-TEST(ClientIntegrationTest, DISABLED_ReceiveResponseConvenience)
+TEST(ClientIntegrationTest, ReceiveResponseConvenience)
 {
+    SKIP_IN_CI();
+
     ClaudeOptions opts;
     opts.permission_mode = "bypassPermissions";
 

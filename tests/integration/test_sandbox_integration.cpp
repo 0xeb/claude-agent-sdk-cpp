@@ -1,3 +1,5 @@
+#include "../test_utils.hpp"
+
 #include <claude/errors.hpp>
 #include <claude/query.hpp>
 #include <claude/types.hpp>
@@ -6,12 +8,10 @@
 
 using namespace claude;
 
-// Integration tests for SandboxSettings - requires Claude CLI
+// Integration tests for SandboxSettings
 // NOTE: Sandbox is primarily a Linux feature (uses bubblewrap/landlock)
 // On macOS/Windows, sandbox settings are passed but may not enforce restrictions
-//
-// Tests are DISABLED by default for CI, enable manually with:
-//   --gtest_also_run_disabled_tests --gtest_filter="SandboxIntegration*"
+// Skipped in CI (live API tests), enabled locally
 
 class SandboxIntegrationTest : public ::testing::Test
 {
@@ -39,8 +39,10 @@ class SandboxIntegrationTest : public ::testing::Test
 // Test 1: Sandbox enabled with autoAllowBashIfSandboxed
 // When sandbox is enabled and autoAllowBashIfSandboxed=true, bash commands should run
 // without permission prompts (within sandbox restrictions)
-TEST_F(SandboxIntegrationTest, DISABLED_SandboxWithAutoAllowBash)
+TEST_F(SandboxIntegrationTest, SandboxWithAutoAllowBash)
 {
+    SKIP_IN_CI();
+
     ClaudeOptions opts;
     opts.permission_mode = "bypassPermissions";
 
@@ -59,8 +61,10 @@ TEST_F(SandboxIntegrationTest, DISABLED_SandboxWithAutoAllowBash)
 
 // Test 2: Sandbox with excluded commands
 // Commands in excludedCommands list should run outside the sandbox
-TEST_F(SandboxIntegrationTest, DISABLED_SandboxWithExcludedCommands)
+TEST_F(SandboxIntegrationTest, SandboxWithExcludedCommands)
 {
+    SKIP_IN_CI();
+
     ClaudeOptions opts;
     opts.permission_mode = "bypassPermissions";
 
@@ -79,8 +83,10 @@ TEST_F(SandboxIntegrationTest, DISABLED_SandboxWithExcludedCommands)
 
 // Test 3: Sandbox with network configuration
 // Test that network settings are passed correctly
-TEST_F(SandboxIntegrationTest, DISABLED_SandboxWithNetworkConfig)
+TEST_F(SandboxIntegrationTest, SandboxWithNetworkConfig)
 {
+    SKIP_IN_CI();
+
     ClaudeOptions opts;
     opts.permission_mode = "bypassPermissions";
 
@@ -103,8 +109,10 @@ TEST_F(SandboxIntegrationTest, DISABLED_SandboxWithNetworkConfig)
 
 // Test 4: Sandbox disabled explicitly
 // When sandbox.enabled = false, commands should run without sandbox restrictions
-TEST_F(SandboxIntegrationTest, DISABLED_SandboxDisabled)
+TEST_F(SandboxIntegrationTest, SandboxDisabled)
 {
+    SKIP_IN_CI();
+
     ClaudeOptions opts;
     opts.permission_mode = "bypassPermissions";
 
@@ -121,8 +129,10 @@ TEST_F(SandboxIntegrationTest, DISABLED_SandboxDisabled)
 
 // Test 5: Full sandbox configuration
 // Test complex sandbox configuration with multiple settings
-TEST_F(SandboxIntegrationTest, DISABLED_FullSandboxConfig)
+TEST_F(SandboxIntegrationTest, FullSandboxConfig)
 {
+    SKIP_IN_CI();
+
     ClaudeOptions opts;
     opts.permission_mode = "bypassPermissions";
 

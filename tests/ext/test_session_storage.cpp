@@ -3,6 +3,8 @@
  * @brief Tests for claude::ext::SessionWrapper
  */
 
+#include "../test_utils.hpp"
+
 #include <claude/ext/session_storage.hpp>
 #include <filesystem>
 #include <fstream>
@@ -234,14 +236,13 @@ TEST_F(SessionWrapperTest, MoveAssignment)
 
 // ============================================================================
 // Integration Tests (Require Claude CLI)
+// Skipped in CI, enabled locally
 // ============================================================================
 
-// These tests are commented out because they require actual Claude CLI
-// Uncomment and run manually if Claude CLI is available
-
-/*
-TEST_F(SessionWrapperTest, DISABLED_ConnectAndDisconnect)
+TEST_F(SessionWrapperTest, ConnectAndDisconnect)
 {
+    SKIP_IN_CI();
+
     claude::ClaudeOptions opts;
     opts.permission_mode = "bypassPermissions";
     opts.model = "claude-sonnet-4-5";
@@ -257,8 +258,10 @@ TEST_F(SessionWrapperTest, DISABLED_ConnectAndDisconnect)
     });
 }
 
-TEST_F(SessionWrapperTest, DISABLED_SendQueryAndReceiveMessages)
+TEST_F(SessionWrapperTest, SendQueryAndReceiveMessages)
 {
+    SKIP_IN_CI();
+
     claude::ClaudeOptions opts;
     opts.permission_mode = "bypassPermissions";
     opts.model = "claude-sonnet-4-5";
@@ -291,4 +294,3 @@ TEST_F(SessionWrapperTest, DISABLED_SendQueryAndReceiveMessages)
     auto sessions = wrapper.list_sessions();
     EXPECT_FALSE(sessions.empty());
 }
-*/
