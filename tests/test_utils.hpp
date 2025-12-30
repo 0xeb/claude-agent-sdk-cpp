@@ -3,7 +3,8 @@
 #include <cstdlib>
 #include <gtest/gtest.h>
 
-namespace claude::test {
+namespace claude::test
+{
 
 /**
  * Detects if running in a CI environment.
@@ -13,15 +14,15 @@ inline bool is_ci_environment()
 {
     // Common CI environment variables
     const char* ci_vars[] = {
-        "CI",              // Generic (GitHub Actions, GitLab CI, etc.)
-        "GITHUB_ACTIONS",  // GitHub Actions
-        "GITLAB_CI",       // GitLab CI
-        "TRAVIS",          // Travis CI
-        "CIRCLECI",        // CircleCI
-        "JENKINS_URL",     // Jenkins
-        "BUILDKITE",       // Buildkite
-        "TF_BUILD",        // Azure Pipelines
-        "APPVEYOR",        // AppVeyor
+        "CI",                 // Generic (GitHub Actions, GitLab CI, etc.)
+        "GITHUB_ACTIONS",     // GitHub Actions
+        "GITLAB_CI",          // GitLab CI
+        "TRAVIS",             // Travis CI
+        "CIRCLECI",           // CircleCI
+        "JENKINS_URL",        // Jenkins
+        "BUILDKITE",          // Buildkite
+        "TF_BUILD",           // Azure Pipelines
+        "APPVEYOR",           // AppVeyor
         "CODEBUILD_BUILD_ID", // AWS CodeBuild
     };
 
@@ -29,9 +30,7 @@ inline bool is_ci_environment()
     {
         const char* value = std::getenv(var);
         if (value != nullptr && value[0] != '\0')
-        {
             return true;
-        }
     }
     return false;
 }
@@ -48,9 +47,11 @@ inline bool is_ci_environment()
  *       // ... test code that calls live API ...
  *   }
  */
-#define SKIP_IN_CI() \
-    do { \
-        if (claude::test::is_ci_environment()) { \
-            GTEST_SKIP() << "Skipped in CI environment (live API test)"; \
-        } \
+#define SKIP_IN_CI()                                                                               \
+    do                                                                                             \
+    {                                                                                              \
+        if (claude::test::is_ci_environment())                                                     \
+        {                                                                                          \
+            GTEST_SKIP() << "Skipped in CI environment (live API test)";                           \
+        }                                                                                          \
     } while (0)
