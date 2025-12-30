@@ -61,8 +61,9 @@ add_test(NAME test_claude COMMAND test_claude)
 set_tests_properties(test_claude PROPERTIES LABELS "conformance")
 
 # Add reasonable timeouts to avoid hangs in CI or constrained environments
-# Allow more time for this umbrella suite in CI/constrained environments
-set_tests_properties(test_claude PROPERTIES TIMEOUT 600)
+# Local runs with all integration tests enabled need much longer timeout
+# CI runs with SKIP_IN_CI() will be much faster
+set_tests_properties(test_claude PROPERTIES TIMEOUT 1800)
 
 # Optional: fastmcpp integration tests (requires fastmcpp)
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../../fastmcpp/CMakeLists.txt")

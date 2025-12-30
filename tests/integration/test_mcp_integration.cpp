@@ -1,3 +1,5 @@
+#include "../test_utils.hpp"
+
 #include <claude/errors.hpp>
 #include <claude/query.hpp>
 #include <claude/types.hpp>
@@ -7,10 +9,7 @@
 using namespace claude;
 
 // Integration tests for MCP (Model Context Protocol) servers
-// Tests that MCP tools can be invoked through the SDK
-//
-// Tests are DISABLED by default for CI, enable manually with:
-//   --gtest_also_run_disabled_tests --gtest_filter="MCPIntegration*"
+// Skipped in CI (live API tests), enabled locally
 
 class MCPIntegrationTest : public ::testing::Test
 {
@@ -54,8 +53,10 @@ class MCPIntegrationTest : public ::testing::Test
 
 // Test 1: Query with MCP server configured (filesystem)
 // This test requires the filesystem MCP server to be configured
-TEST_F(MCPIntegrationTest, DISABLED_FilesystemMCPServer)
+TEST_F(MCPIntegrationTest, FilesystemMCPServer)
 {
+    SKIP_IN_CI();
+
     ClaudeOptions opts;
     opts.permission_mode = "bypassPermissions";
 
@@ -75,8 +76,10 @@ TEST_F(MCPIntegrationTest, DISABLED_FilesystemMCPServer)
 }
 
 // Test 2: Query that should trigger tool use
-TEST_F(MCPIntegrationTest, DISABLED_ToolUseQuery)
+TEST_F(MCPIntegrationTest, ToolUseQuery)
 {
+    SKIP_IN_CI();
+
     ClaudeOptions opts;
     opts.permission_mode = "bypassPermissions";
 
@@ -95,8 +98,10 @@ TEST_F(MCPIntegrationTest, DISABLED_ToolUseQuery)
 }
 
 // Test 3: Query with multiple tool calls
-TEST_F(MCPIntegrationTest, DISABLED_MultipleToolCalls)
+TEST_F(MCPIntegrationTest, MultipleToolCalls)
 {
+    SKIP_IN_CI();
+
     ClaudeOptions opts;
     opts.permission_mode = "bypassPermissions";
 
@@ -113,8 +118,10 @@ TEST_F(MCPIntegrationTest, DISABLED_MultipleToolCalls)
 }
 
 // Test 4: Verify tool results are captured
-TEST_F(MCPIntegrationTest, DISABLED_ToolResultsInMessages)
+TEST_F(MCPIntegrationTest, ToolResultsInMessages)
 {
+    SKIP_IN_CI();
+
     ClaudeOptions opts;
     opts.permission_mode = "bypassPermissions";
 
@@ -151,8 +158,10 @@ TEST_F(MCPIntegrationTest, DISABLED_ToolResultsInMessages)
 }
 
 // Test 5: Query with max_turns limit affecting tool use
-TEST_F(MCPIntegrationTest, DISABLED_MaxTurnsWithToolUse)
+TEST_F(MCPIntegrationTest, MaxTurnsWithToolUse)
 {
+    SKIP_IN_CI();
+
     ClaudeOptions opts;
     opts.permission_mode = "bypassPermissions";
     opts.max_turns = 3; // Limit turns

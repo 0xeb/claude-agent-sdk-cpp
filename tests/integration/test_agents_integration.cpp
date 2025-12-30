@@ -1,3 +1,5 @@
+#include "../test_utils.hpp"
+
 #include <claude/errors.hpp>
 #include <claude/query.hpp>
 #include <claude/types.hpp>
@@ -6,11 +8,8 @@
 
 using namespace claude;
 
-// Integration tests for AgentDefinition - requires Claude CLI
-// Tests are DISABLED by default for CI, enable manually with:
-//   --gtest_also_run_disabled_tests
-// Or run specific test:
-//   --gtest_filter="*AgentIntegration*"
+// Integration tests for AgentDefinition
+// Skipped in CI (live API tests), enabled locally
 
 class AgentIntegrationTest : public ::testing::Test
 {
@@ -51,8 +50,10 @@ class AgentIntegrationTest : public ::testing::Test
 };
 
 // Test 1: Single agent with tools (code reviewer pattern)
-TEST_F(AgentIntegrationTest, DISABLED_CodeReviewerAgent)
+TEST_F(AgentIntegrationTest, CodeReviewerAgent)
 {
+    SKIP_IN_CI();
+
     ClaudeOptions opts;
     opts.permission_mode = "bypassPermissions";
 
@@ -79,8 +80,10 @@ TEST_F(AgentIntegrationTest, DISABLED_CodeReviewerAgent)
 }
 
 // Test 2: Agent with model override
-TEST_F(AgentIntegrationTest, DISABLED_DocumentationWriterAgent)
+TEST_F(AgentIntegrationTest, DocumentationWriterAgent)
 {
+    SKIP_IN_CI();
+
     ClaudeOptions opts;
     opts.permission_mode = "bypassPermissions";
 
@@ -105,8 +108,10 @@ TEST_F(AgentIntegrationTest, DISABLED_DocumentationWriterAgent)
 }
 
 // Test 3: Agent without model (inherits from parent)
-TEST_F(AgentIntegrationTest, DISABLED_AnalyzerAgentNoModel)
+TEST_F(AgentIntegrationTest, AnalyzerAgentNoModel)
 {
+    SKIP_IN_CI();
+
     ClaudeOptions opts;
     opts.permission_mode = "bypassPermissions";
     opts.model = "claude-sonnet-4-20250514"; // Parent model
@@ -133,8 +138,10 @@ TEST_F(AgentIntegrationTest, DISABLED_AnalyzerAgentNoModel)
 }
 
 // Test 4: Multiple agents defined (choose one to use)
-TEST_F(AgentIntegrationTest, DISABLED_MultipleAgentsDefined)
+TEST_F(AgentIntegrationTest, MultipleAgentsDefined)
 {
+    SKIP_IN_CI();
+
     ClaudeOptions opts;
     opts.permission_mode = "bypassPermissions";
 
@@ -174,8 +181,10 @@ TEST_F(AgentIntegrationTest, DISABLED_MultipleAgentsDefined)
 }
 
 // Test 5: Agent with Bash tool
-TEST_F(AgentIntegrationTest, DISABLED_AgentWithBashTool)
+TEST_F(AgentIntegrationTest, AgentWithBashTool)
 {
+    SKIP_IN_CI();
+
     ClaudeOptions opts;
     opts.permission_mode = "bypassPermissions";
 
@@ -199,8 +208,10 @@ TEST_F(AgentIntegrationTest, DISABLED_AgentWithBashTool)
 }
 
 // Test 6: Agent with all standard tools
-TEST_F(AgentIntegrationTest, DISABLED_AgentWithAllTools)
+TEST_F(AgentIntegrationTest, AgentWithAllTools)
 {
+    SKIP_IN_CI();
+
     ClaudeOptions opts;
     opts.permission_mode = "bypassPermissions";
 
@@ -226,8 +237,10 @@ TEST_F(AgentIntegrationTest, DISABLED_AgentWithAllTools)
 }
 
 // Test 7: Verify session can be retrieved after agent runs
-TEST_F(AgentIntegrationTest, DISABLED_SessionContainsAgentInteraction)
+TEST_F(AgentIntegrationTest, SessionContainsAgentInteraction)
 {
+    SKIP_IN_CI();
+
     ClaudeOptions opts;
     opts.permission_mode = "bypassPermissions";
 
@@ -269,8 +282,10 @@ TEST_F(AgentIntegrationTest, DISABLED_SessionContainsAgentInteraction)
 }
 
 // Test 8: Agent with special characters in name
-TEST_F(AgentIntegrationTest, DISABLED_AgentWithSpecialName)
+TEST_F(AgentIntegrationTest, AgentWithSpecialName)
 {
+    SKIP_IN_CI();
+
     ClaudeOptions opts;
     opts.permission_mode = "bypassPermissions";
 
