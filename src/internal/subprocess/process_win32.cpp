@@ -349,31 +349,93 @@ void Process::spawn(const std::string& executable, const std::vector<std::string
         }
     }
 
-    // Setup STARTUPINFO
-    STARTUPINFOA si;
+    // Create null handle for stderr if not redirecting
+    // This completely isolates the subprocess from the parent's console
+    HANDLE null_handle = INVALID_HANDLE_VALUE;
+    if (!options.redirect_stderr)
+    {
+        SECURITY_ATTRIBUTES null_sa;
+        null_sa.nLength = sizeof(SECURITY_ATTRIBUTES);
+        null_sa.bInheritHandle = TRUE;
+        null_sa.lpSecurityDescriptor = nullptr;
+        null_handle = CreateFileA("NUL", GENERIC_WRITE, FILE_SHARE_WRITE, &null_sa, OPEN_EXISTING,
+                                  FILE_ATTRIBUTE_NORMAL, nullptr);
+    }
+
+    // Build list of handles to inherit
+    std::vector<HANDLE> handles_to_inherit;
+    if (stdin_read != INVALID_HANDLE_VALUE)
+        handles_to_inherit.push_back(stdin_read);
+    if (stdout_write != INVALID_HANDLE_VALUE)
+        handles_to_inherit.push_back(stdout_write);
+    if (stderr_write != INVALID_HANDLE_VALUE)
+        handles_to_inherit.push_back(stderr_write);
+    else if (null_handle != INVALID_HANDLE_VALUE)
+        handles_to_inherit.push_back(null_handle);
+
+    // Setup STARTUPINFOEX with explicit handle list
+    // This prevents inheriting ALL handles which can cause "bad file descriptor" errors
+    STARTUPINFOEXA si;
     ZeroMemory(&si, sizeof(si));
-    si.cb = sizeof(si);
-    si.dwFlags = STARTF_USESTDHANDLES;
-    si.hStdInput = options.redirect_stdin ? stdin_read : GetStdHandle(STD_INPUT_HANDLE);
-    si.hStdOutput = options.redirect_stdout ? stdout_write : GetStdHandle(STD_OUTPUT_HANDLE);
-    si.hStdError = options.redirect_stderr ? stderr_write : GetStdHandle(STD_ERROR_HANDLE);
+    si.StartupInfo.cb = sizeof(si);
+    si.StartupInfo.dwFlags = STARTF_USESTDHANDLES;
+    si.StartupInfo.hStdInput = options.redirect_stdin ? stdin_read : GetStdHandle(STD_INPUT_HANDLE);
+    si.StartupInfo.hStdOutput =
+        options.redirect_stdout ? stdout_write : GetStdHandle(STD_OUTPUT_HANDLE);
+    si.StartupInfo.hStdError =
+        options.redirect_stderr
+            ? stderr_write
+            : (null_handle != INVALID_HANDLE_VALUE ? null_handle : GetStdHandle(STD_ERROR_HANDLE));
+
+    // Initialize the attribute list for handle inheritance
+    SIZE_T attr_size = 0;
+    InitializeProcThreadAttributeList(nullptr, 1, 0, &attr_size);
+    si.lpAttributeList = (LPPROC_THREAD_ATTRIBUTE_LIST)HeapAlloc(GetProcessHeap(), 0, attr_size);
+    if (!si.lpAttributeList)
+        throw std::runtime_error("Failed to allocate attribute list");
+
+    if (!InitializeProcThreadAttributeList(si.lpAttributeList, 1, 0, &attr_size))
+    {
+        HeapFree(GetProcessHeap(), 0, si.lpAttributeList);
+        throw std::runtime_error("Failed to init attribute list: " + get_last_error_message());
+    }
+
+    // Only specify handle list if we have handles to inherit
+    if (!handles_to_inherit.empty())
+    {
+        if (!UpdateProcThreadAttribute(
+                si.lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_HANDLE_LIST, handles_to_inherit.data(),
+                handles_to_inherit.size() * sizeof(HANDLE), nullptr, nullptr))
+        {
+            DeleteProcThreadAttributeList(si.lpAttributeList);
+            HeapFree(GetProcessHeap(), 0, si.lpAttributeList);
+            throw std::runtime_error("Failed to update attribute list: " +
+                                     get_last_error_message());
+        }
+    }
 
     PROCESS_INFORMATION pi;
     ZeroMemory(&pi, sizeof(pi));
 
-    // Create the process
+    // Create the process with EXTENDED_STARTUPINFO_PRESENT flag
+    DWORD creation_flags = EXTENDED_STARTUPINFO_PRESENT;
+
     BOOL success = CreateProcessA(
         nullptr,                                // Application name
         const_cast<char*>(cmdline_str.c_str()), // Command line
         nullptr,                                // Process security attributes
         nullptr,                                // Thread security attributes
-        TRUE,                                   // Inherit handles
-        0,                                      // Creation flags
+        TRUE,                                   // Inherit handles (only those in the list)
+        creation_flags,                         // Creation flags
         provide_env_block ? const_cast<char*>(env_block.data()) : nullptr, // Environment
         options.working_directory.empty() ? nullptr : options.working_directory.c_str(),
-        &si, // Startup info
-        &pi  // Process information
+        (LPSTARTUPINFOA)&si, // Startup info (cast to STARTUPINFOA)
+        &pi                  // Process information
     );
+
+    // Clean up attribute list
+    DeleteProcThreadAttributeList(si.lpAttributeList);
+    HeapFree(GetProcessHeap(), 0, si.lpAttributeList);
 
     // Close child pipe handles in parent
     if (stdin_read != INVALID_HANDLE_VALUE)
@@ -382,6 +444,8 @@ void Process::spawn(const std::string& executable, const std::vector<std::string
         CloseHandle(stdout_write);
     if (stderr_write != INVALID_HANDLE_VALUE)
         CloseHandle(stderr_write);
+    if (null_handle != INVALID_HANDLE_VALUE)
+        CloseHandle(null_handle);
 
     if (!success)
         throw std::runtime_error("Failed to create process: " + get_last_error_message());
