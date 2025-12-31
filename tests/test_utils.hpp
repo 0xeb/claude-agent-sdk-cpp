@@ -3,9 +3,8 @@
 #include "../src/internal/subprocess/process.hpp"
 
 #include <cstdlib>
-#include <string>
-
 #include <gtest/gtest.h>
+#include <string>
 
 namespace claude::test
 {
@@ -68,15 +67,13 @@ inline bool should_run_live_tests()
 
 } // namespace claude::test
 
-#define SKIP_IN_CI()                                                        \
-    do                                                                      \
-    {                                                                       \
-        if (!claude::test::should_run_live_tests())                         \
-        {                                                                   \
-            GTEST_SKIP()                                                    \
-                << "Skipped live CLI/API test (set "                        \
-                   "CLAUDE_AGENT_SDK_RUN_LIVE_TESTS=1 and ensure `claude` "  \
-                   "is in PATH or set CLAUDE_CLI_PATH)";                    \
-        }                                                                   \
+#define SKIP_IN_CI()                                                                               \
+    do                                                                                             \
+    {                                                                                              \
+        if (!claude::test::should_run_live_tests())                                                \
+        {                                                                                          \
+            GTEST_SKIP() << "Skipped live CLI/API test (set "                                      \
+                            "CLAUDE_AGENT_SDK_RUN_LIVE_TESTS=1 and ensure `claude` "               \
+                            "is in PATH or set CLAUDE_CLI_PATH)";                                  \
+        }                                                                                          \
     } while (0)
-

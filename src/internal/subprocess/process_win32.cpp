@@ -358,8 +358,8 @@ void Process::spawn(const std::string& executable, const std::vector<std::string
         null_sa.nLength = sizeof(SECURITY_ATTRIBUTES);
         null_sa.bInheritHandle = TRUE;
         null_sa.lpSecurityDescriptor = nullptr;
-        null_handle = CreateFileA("NUL", GENERIC_WRITE, FILE_SHARE_WRITE, &null_sa,
-                                   OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+        null_handle = CreateFileA("NUL", GENERIC_WRITE, FILE_SHARE_WRITE, &null_sa, OPEN_EXISTING,
+                                  FILE_ATTRIBUTE_NORMAL, nullptr);
     }
 
     // Build list of handles to inherit
@@ -380,9 +380,12 @@ void Process::spawn(const std::string& executable, const std::vector<std::string
     si.StartupInfo.cb = sizeof(si);
     si.StartupInfo.dwFlags = STARTF_USESTDHANDLES;
     si.StartupInfo.hStdInput = options.redirect_stdin ? stdin_read : GetStdHandle(STD_INPUT_HANDLE);
-    si.StartupInfo.hStdOutput = options.redirect_stdout ? stdout_write : GetStdHandle(STD_OUTPUT_HANDLE);
-    si.StartupInfo.hStdError = options.redirect_stderr ? stderr_write :
-                               (null_handle != INVALID_HANDLE_VALUE ? null_handle : GetStdHandle(STD_ERROR_HANDLE));
+    si.StartupInfo.hStdOutput =
+        options.redirect_stdout ? stdout_write : GetStdHandle(STD_OUTPUT_HANDLE);
+    si.StartupInfo.hStdError =
+        options.redirect_stderr
+            ? stderr_write
+            : (null_handle != INVALID_HANDLE_VALUE ? null_handle : GetStdHandle(STD_ERROR_HANDLE));
 
     // Initialize the attribute list for handle inheritance
     SIZE_T attr_size = 0;
@@ -400,13 +403,14 @@ void Process::spawn(const std::string& executable, const std::vector<std::string
     // Only specify handle list if we have handles to inherit
     if (!handles_to_inherit.empty())
     {
-        if (!UpdateProcThreadAttribute(si.lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_HANDLE_LIST,
-                                        handles_to_inherit.data(),
-                                        handles_to_inherit.size() * sizeof(HANDLE), nullptr, nullptr))
+        if (!UpdateProcThreadAttribute(
+                si.lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_HANDLE_LIST, handles_to_inherit.data(),
+                handles_to_inherit.size() * sizeof(HANDLE), nullptr, nullptr))
         {
             DeleteProcThreadAttributeList(si.lpAttributeList);
             HeapFree(GetProcessHeap(), 0, si.lpAttributeList);
-            throw std::runtime_error("Failed to update attribute list: " + get_last_error_message());
+            throw std::runtime_error("Failed to update attribute list: " +
+                                     get_last_error_message());
         }
     }
 
@@ -426,7 +430,7 @@ void Process::spawn(const std::string& executable, const std::vector<std::string
         provide_env_block ? const_cast<char*>(env_block.data()) : nullptr, // Environment
         options.working_directory.empty() ? nullptr : options.working_directory.c_str(),
         (LPSTARTUPINFOA)&si, // Startup info (cast to STARTUPINFOA)
-        &pi  // Process information
+        &pi                  // Process information
     );
 
     // Clean up attribute list
