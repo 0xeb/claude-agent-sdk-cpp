@@ -1,3 +1,5 @@
+#include "../test_utils.hpp"
+
 #include <claude/claude.hpp>
 #include <gtest/gtest.h>
 
@@ -60,6 +62,8 @@ TEST(FastmcppIntegration, CreateHandlerFromToolManager)
 
 TEST(FastmcppIntegration, UseHandlerWithClaudeClient)
 {
+    SKIP_IN_CI();
+
     using namespace claude;
     using Json = nlohmann::json;
 

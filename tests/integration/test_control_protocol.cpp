@@ -1,3 +1,5 @@
+#include "../test_utils.hpp"
+
 #include <claude/claude.hpp>
 #include <gtest/gtest.h>
 
@@ -8,6 +10,7 @@ class ControlProtocolTest : public ::testing::Test
 
     void SetUp() override
     {
+        SKIP_IN_CI();
         opts.permission_mode = "default";
     }
 };

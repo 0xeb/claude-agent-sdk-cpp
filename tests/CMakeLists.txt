@@ -98,12 +98,5 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../../fastmcpp/CMakeLists.txt")
     set_tests_properties(test_fastmcpp_integration PROPERTIES TIMEOUT 600)
 endif()
 
-# If Claude CLI is not available in this environment, disable tests that require it
-find_program(CLAUDE_CLI_EXECUTABLE NAMES claude)
-if(NOT CLAUDE_CLI_EXECUTABLE)
-    message(STATUS "Claude CLI not found in PATH; disabling CLI-dependent tests")
-    set_tests_properties(test_claude PROPERTIES DISABLED TRUE)
-    if(TARGET test_fastmcpp_integration)
-        set_tests_properties(test_fastmcpp_integration PROPERTIES DISABLED TRUE)
-    endif()
-endif()
+# Note: CLI-dependent tests are skipped at runtime via SKIP_IN_CI() unless
+# CLAUDE_AGENT_SDK_RUN_LIVE_TESTS=1 is set and `claude` is available.

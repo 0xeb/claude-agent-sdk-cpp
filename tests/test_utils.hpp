@@ -1,18 +1,17 @@
 #pragma once
 
+#include "../src/internal/subprocess/process.hpp"
+
 #include <cstdlib>
+#include <string>
+
 #include <gtest/gtest.h>
 
 namespace claude::test
 {
 
-/**
- * Detects if running in a CI environment.
- * Checks common CI environment variables.
- */
 inline bool is_ci_environment()
 {
-    // Common CI environment variables
     const char* ci_vars[] = {
         "CI",                 // Generic (GitHub Actions, GitLab CI, etc.)
         "GITHUB_ACTIONS",     // GitHub Actions
@@ -35,23 +34,49 @@ inline bool is_ci_environment()
     return false;
 }
 
+inline bool has_env_flag(const char* name)
+{
+    const char* value = std::getenv(name);
+    return value != nullptr && value[0] != '\0' && std::string(value) != "0";
+}
+
+inline bool is_claude_cli_available()
+{
+    if (const char* cli_path = std::getenv("CLAUDE_CLI_PATH");
+        cli_path != nullptr && cli_path[0] != '\0')
+        return true;
+
+    if (claude::subprocess::find_executable("claude").has_value())
+        return true;
+#ifdef _WIN32
+    if (claude::subprocess::find_executable("claude.exe").has_value())
+        return true;
+#endif
+    return false;
+}
+
+inline bool should_run_live_tests()
+{
+    if (is_ci_environment())
+        return false;
+
+    if (!has_env_flag("CLAUDE_AGENT_SDK_RUN_LIVE_TESTS"))
+        return false;
+
+    return is_claude_cli_available();
+}
+
 } // namespace claude::test
 
-/**
- * Macro to skip tests in CI environments.
- * Use at the beginning of integration tests that require live Claude CLI.
- *
- * Example:
- *   TEST(MyTest, LiveApiCall) {
- *       SKIP_IN_CI();
- *       // ... test code that calls live API ...
- *   }
- */
-#define SKIP_IN_CI()                                                                               \
-    do                                                                                             \
-    {                                                                                              \
-        if (claude::test::is_ci_environment())                                                     \
-        {                                                                                          \
-            GTEST_SKIP() << "Skipped in CI environment (live API test)";                           \
-        }                                                                                          \
+#define SKIP_IN_CI()                                                        \
+    do                                                                      \
+    {                                                                       \
+        if (!claude::test::should_run_live_tests())                         \
+        {                                                                   \
+            GTEST_SKIP()                                                    \
+                << "Skipped live CLI/API test (set "                        \
+                   "CLAUDE_AGENT_SDK_RUN_LIVE_TESTS=1 and ensure `claude` "  \
+                   "is in PATH or set CLAUDE_CLI_PATH)";                    \
+        }                                                                   \
     } while (0)
+
