@@ -157,7 +157,45 @@ TEST_F(StreamingIntegrationTest, QueryVsClient)
     EXPECT_NE(session1, session2) << "Different sessions";
 }
 
-// Test 5: ClaudeClient get_pid() and server info
+// Test 5: Multi-turn WITHOUT manual session_id passing (Python parity)
+// Verifies that using default session_id="default" maintains conversation context
+TEST_F(StreamingIntegrationTest, ClientMultiTurnAutoSession)
+{
+    SKIP_IN_CI();
+
+    ClaudeOptions opts;
+    opts.permission_mode = "bypassPermissions";
+
+    ClaudeClient client(opts);
+    client.connect();
+
+    // Turn 1: Establish context - no session_id passed (uses default)
+    client.send_query("Remember this secret code: ALPHA-7. Just say 'Remembered'.");
+    std::string response1;
+    for (const auto& msg : client.receive_messages())
+        if (is_assistant_message(msg))
+            response1 = get_text_content(std::get<AssistantMessage>(msg).content);
+    std::cout << "Turn 1 Response: " << response1 << "\n";
+
+    // Turn 2: Ask about context - STILL no session_id passed (uses default)
+    // This should work because both queries use session_id="default"
+    client.send_query("What was the secret code I told you?");
+    std::string response2;
+    for (const auto& msg : client.receive_messages())
+        if (is_assistant_message(msg))
+            response2 = get_text_content(std::get<AssistantMessage>(msg).content);
+    std::cout << "Turn 2 Response: " << response2 << "\n";
+
+    client.disconnect();
+
+    // Response should contain "ALPHA-7" if session context was maintained
+    EXPECT_TRUE(response2.find("ALPHA") != std::string::npos ||
+                response2.find("7") != std::string::npos)
+        << "Multi-turn context should be maintained without manual session_id. "
+        << "Response was: " << response2;
+}
+
+// Test 6: ClaudeClient get_pid() and server info
 TEST_F(StreamingIntegrationTest, ClientProcessInfo)
 {
     SKIP_IN_CI();

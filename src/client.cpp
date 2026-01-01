@@ -719,12 +719,11 @@ void ClaudeClient::send_query(const std::string& prompt, const std::string& sess
     impl_->on_new_query_started();
 
     // Build user message JSON in the format the CLI expects
+    // Always include session_id for multi-turn conversation continuity (Python parity)
     json msg = {{"type", "user"},
                 {"message", {{"role", "user"}, {"content", prompt}}},
-                {"parent_tool_use_id", nullptr}};
-
-    if (!session_id.empty())
-        msg["session_id"] = session_id;
+                {"parent_tool_use_id", nullptr},
+                {"session_id", session_id}};
 
     // Write to transport
     std::string json_str = msg.dump() + "\n";

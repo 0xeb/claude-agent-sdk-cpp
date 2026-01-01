@@ -288,3 +288,69 @@ TEST_F(SessionIntegrationTest, ClientMultiTurnSession)
     // Response should mention "Max" if session was continued correctly
     std::cout << "Final response: " << response << "\n";
 }
+
+// Test 8: Multi-turn using default session_id (Python parity)
+// No manual session_id capture/passing needed - uses "default" automatically
+TEST_F(SessionIntegrationTest, AutomaticSessionContinuity)
+{
+    SKIP_IN_CI();
+
+    ClaudeOptions opts;
+    opts.permission_mode = "bypassPermissions";
+
+    ClaudeClient client(opts);
+    client.connect();
+
+    // Turn 1: Establish context - NO session_id passed (uses "default")
+    std::cout << "=== Turn 1 (Auto Session) ===\n";
+    client.send_query("My favorite fruit is mango. Just say 'Noted'.");
+    std::string response1;
+    for (const auto& msg : client.receive_messages())
+    {
+        if (is_assistant_message(msg))
+        {
+            response1 = get_text_content(std::get<AssistantMessage>(msg).content);
+            std::cout << "Response: " << response1 << "\n";
+        }
+    }
+
+    // Turn 2: Query about context - STILL no session_id passed
+    // Uses the same "default" session_id automatically
+    std::cout << "\n=== Turn 2 (Auto Session) ===\n";
+    client.send_query("What is my favorite fruit?");
+    std::string response2;
+    for (const auto& msg : client.receive_messages())
+    {
+        if (is_assistant_message(msg))
+        {
+            response2 = get_text_content(std::get<AssistantMessage>(msg).content);
+            std::cout << "Response: " << response2 << "\n";
+        }
+    }
+
+    // Turn 3: Another follow-up - still no manual session_id
+    std::cout << "\n=== Turn 3 (Auto Session) ===\n";
+    client.send_query("And what color is that fruit typically?");
+    std::string response3;
+    for (const auto& msg : client.receive_messages())
+    {
+        if (is_assistant_message(msg))
+        {
+            response3 = get_text_content(std::get<AssistantMessage>(msg).content);
+            std::cout << "Response: " << response3 << "\n";
+        }
+    }
+
+    client.disconnect();
+
+    // Response should reference "mango" if auto-session works
+    std::cout << "\n=== Verification ===\n";
+    std::cout << "Turn 2: " << response2 << "\n";
+
+    bool context_maintained = (response2.find("mango") != std::string::npos ||
+                               response2.find("Mango") != std::string::npos);
+
+    EXPECT_TRUE(context_maintained)
+        << "Automatic session continuity should maintain context across turns. "
+        << "Response was: " << response2;
+}

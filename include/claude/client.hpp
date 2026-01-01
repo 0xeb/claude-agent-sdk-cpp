@@ -110,7 +110,8 @@ class ClaudeClient
     long get_pid() const;
 
     // Send query
-    void send_query(const std::string& prompt, const std::string& session_id = "");
+    // session_id defaults to "default" for multi-turn conversation continuity (Python parity)
+    void send_query(const std::string& prompt, const std::string& session_id = "default");
 
     // Receive messages
     MessageStream receive_messages();
