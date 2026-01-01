@@ -417,8 +417,10 @@ void Process::spawn(const std::string& executable, const std::vector<std::string
     PROCESS_INFORMATION pi;
     ZeroMemory(&pi, sizeof(pi));
 
-    // Create the process with EXTENDED_STARTUPINFO_PRESENT flag
-    DWORD creation_flags = EXTENDED_STARTUPINFO_PRESENT;
+    // Create the process with:
+    // - EXTENDED_STARTUPINFO_PRESENT: for explicit handle list (prevents bad FD errors)
+    // - CREATE_NO_WINDOW: prevents console window popup when launched from GUI apps
+    DWORD creation_flags = EXTENDED_STARTUPINFO_PRESENT | CREATE_NO_WINDOW;
 
     BOOL success = CreateProcessA(
         nullptr,                                // Application name
