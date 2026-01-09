@@ -171,6 +171,8 @@ See `include/claude/types.hpp` and `docs/api-reference.md` for full details.
 
 **Canonical rule:** The Python `claude-agent-sdk` is the canonical reference. This C++ port is expected to track its behavior and API (currently aligned with Python v0.1.15).
 
+Upstream sync checkpoints: `docs/upstream-sync.md`.
+
 ## License
 
 Licensed under the MIT License. See `LICENSE` and `NOTICE` for details.
