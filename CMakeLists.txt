@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(claude_sdk VERSION 0.1.15 LANGUAGES CXX)
+project(claude_sdk VERSION 0.1.18 LANGUAGES CXX)
 
 # Enable folder organization in IDEs (Visual Studio, Xcode, etc.)
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
