@@ -173,6 +173,13 @@ See `include/claude/types.hpp` and `docs/api-reference.md` for full details.
 
 Upstream sync checkpoints: `docs/upstream-sync.md`.
 
+## Related Projects
+
+| Project | Language | Description |
+|---------|----------|-------------|
+| [claude-agent-sdk-python](https://github.com/anthropics/claude-agent-sdk-python) | Python | Official Python SDK (canonical reference) |
+| [claude-agent-sdk-dotnet](https://github.com/0xeb/claude-agent-sdk-dotnet) | C# | .NET port with full feature parity |
+
 ## License
 
 Licensed under the MIT License. See `LICENSE` and `NOTICE` for details.
