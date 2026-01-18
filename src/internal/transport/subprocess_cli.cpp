@@ -666,7 +666,15 @@ std::vector<std::string> SubprocessCLITransport::build_command()
         }
     }
 
-    // Input mode
+    // v0.1.6: Max thinking tokens
+    // IMPORTANT: Must be BEFORE --print -- because -- ends option parsing (POSIX)
+    if (options_.max_thinking_tokens)
+    {
+        cmd.push_back("--max-thinking-tokens");
+        cmd.push_back(std::to_string(*options_.max_thinking_tokens));
+    }
+
+    // Input mode (must be last - especially --print -- which ends option parsing)
     if (is_streaming_)
     {
         cmd.push_back("--input-format");
@@ -674,17 +682,11 @@ std::vector<std::string> SubprocessCLITransport::build_command()
     }
     else
     {
-        // One-shot mode
+        // One-shot mode: --print -- <prompt>
+        // The -- signals end of options, so prompt can contain dashes
         cmd.push_back("--print");
         cmd.push_back("--");
         cmd.push_back(prompt_);
-    }
-
-    // v0.1.6: Max thinking tokens
-    if (options_.max_thinking_tokens)
-    {
-        cmd.push_back("--max-thinking-tokens");
-        cmd.push_back(std::to_string(*options_.max_thinking_tokens));
     }
 
     return cmd;

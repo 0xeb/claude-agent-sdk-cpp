@@ -36,6 +36,7 @@ add_executable(test_claude
     integration/test_mcp_integration.cpp
     integration/test_streaming_integration.cpp
     integration/test_session_integration.cpp
+    integration/test_max_thinking_tokens.cpp
     extra/test_multithreading.cpp
     # Extension tests
     ext/test_session_storage.cpp
