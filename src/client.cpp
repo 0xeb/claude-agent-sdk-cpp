@@ -133,9 +133,8 @@ class MessageStream::Impl
     {
         std::unique_lock<std::mutex> lock(mutex_);
 
-        if (!cv_.wait_for(
-                lock, timeout, [this] { return !queue_.empty() || stopped_ || end_of_response_; }
-            ))
+        if (!cv_.wait_for(lock, timeout,
+                          [this] { return !queue_.empty() || stopped_ || end_of_response_; }))
             return std::nullopt;
 
         if (queue_.empty())
