@@ -53,9 +53,7 @@ TEST(MaxThinkingTokensTest, OptionIsAccepted)
             std::string text = get_text_content(assistant.content);
             std::cout << "[MaxThinkingTokens] Response: " << text << "\n";
             if (!text.empty())
-            {
                 found_text = true;
-            }
         }
     }
 
@@ -90,7 +88,8 @@ TEST(MaxThinkingTokensTest, WithExtendedThinkingModel)
         {
             found_result = true;
             const auto& result_msg = std::get<ResultMessage>(msg);
-            std::cout << "[MaxThinkingTokens] Input tokens: " << result_msg.result.usage.input_tokens
+            std::cout << "[MaxThinkingTokens] Input tokens: "
+                      << result_msg.result.usage.input_tokens
                       << ", Output tokens: " << result_msg.result.usage.output_tokens << "\n";
         }
     }
@@ -147,9 +146,7 @@ TEST(MaxThinkingTokensTest, PromptWithDashes)
             std::string text = get_text_content(assistant.content);
             std::cout << "[MaxThinkingTokens] Dashes prompt response: " << text << "\n";
             if (!text.empty())
-            {
                 found_text = true;
-            }
         }
     }
 
