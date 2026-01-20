@@ -1,6 +1,7 @@
 #ifndef CLAUDE_CLIENT_HPP
 #define CLAUDE_CLIENT_HPP
 
+#include <chrono>
 #include <claude/transport.hpp>
 #include <claude/types.hpp>
 #include <memory>
@@ -72,6 +73,9 @@ class MessageStream
     // Get next message (blocking)
     std::optional<Message> get_next();
 
+    // Get next message with timeout (returns nullopt on timeout or end)
+    std::optional<Message> get_next_for(std::chrono::milliseconds timeout);
+
     // Check if more messages available
     bool has_more() const;
 
@@ -103,6 +107,7 @@ class ClaudeClient
     // Connection lifecycle
     void connect();
     void disconnect();
+    void force_disconnect();
     bool is_connected() const;
 
     // Get process ID of the Claude CLI process

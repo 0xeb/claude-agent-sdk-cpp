@@ -129,6 +129,23 @@ class MessageStream::Impl
         return msg;
     }
 
+    std::optional<Message> pop_message_for(std::chrono::milliseconds timeout)
+    {
+        std::unique_lock<std::mutex> lock(mutex_);
+
+        if (!cv_.wait_for(
+                lock, timeout, [this] { return !queue_.empty() || stopped_ || end_of_response_; }
+            ))
+            return std::nullopt;
+
+        if (queue_.empty())
+            return std::nullopt;
+
+        Message msg = std::move(queue_.front());
+        queue_.pop();
+        return msg;
+    }
+
     void stop()
     {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -695,6 +712,26 @@ void ClaudeClient::disconnect()
     impl_->connected_ = false;
 }
 
+void ClaudeClient::force_disconnect()
+{
+    if (!impl_ || !impl_->connected_)
+        return;
+
+    // Skip first-result gating for fast shutdown (used for timeouts).
+    if (impl_->transport_)
+        impl_->transport_->end_input();
+
+    impl_->stop_reader();
+
+    if (impl_->transport_)
+    {
+        impl_->transport_->close();
+        impl_->transport_.reset();
+    }
+
+    impl_->connected_ = false;
+}
+
 bool ClaudeClient::is_connected() const
 {
     return impl_ && impl_->connected_ && impl_->transport_ && impl_->transport_->is_running();
@@ -834,6 +871,11 @@ MessageStream::Iterator MessageStream::end()
 std::optional<Message> MessageStream::get_next()
 {
     return impl_->pop_message();
+}
+
+std::optional<Message> MessageStream::get_next_for(std::chrono::milliseconds timeout)
+{
+    return impl_->pop_message_for(timeout);
 }
 
 bool MessageStream::has_more() const
