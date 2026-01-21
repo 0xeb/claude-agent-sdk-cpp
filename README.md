@@ -180,6 +180,14 @@ Upstream sync checkpoints: `docs/upstream-sync.md`.
 | [claude-agent-sdk-python](https://github.com/anthropics/claude-agent-sdk-python) | Python | Official Python SDK (canonical reference) |
 | [claude-agent-sdk-dotnet](https://github.com/0xeb/claude-agent-sdk-dotnet) | C# | .NET port with full feature parity |
 
+## Projects Using This SDK
+
+| Project | Description |
+|---------|-------------|
+| [libagents](https://github.com/0xeb/libagents) | Unified C++ library for AI agent providers |
+
+Want to add your project? Open a PR!
+
 ## License
 
 Licensed under the MIT License. See `LICENSE` and `NOTICE` for details.
