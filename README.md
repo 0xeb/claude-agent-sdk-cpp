@@ -188,6 +188,12 @@ Upstream sync checkpoints: `docs/upstream-sync.md`.
 
 Want to add your project? Open a PR!
 
+## Author
+
+Elias Bachaalany ([@0xeb](https://github.com/0xeb))
+
+Pair-programmed with Claude Code and Codex.
+
 ## License
 
 Licensed under the MIT License. See `LICENSE` and `NOTICE` for details.
