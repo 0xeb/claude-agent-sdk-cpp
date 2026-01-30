@@ -41,6 +41,27 @@ struct ProcessHandle
             CloseHandle(process_handle);
     }
 };
+// =============================================================================
+// Job Object for child process cleanup
+// =============================================================================
+
+// Singleton job object that kills all child processes when parent exits.
+// Using JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE ensures spawned servers die
+// when the client process terminates (even abnormally).
+static HANDLE get_child_process_job()
+{
+    static HANDLE job = []() -> HANDLE {
+        HANDLE h = CreateJobObjectA(nullptr, nullptr);
+        if (h)
+        {
+            JOBOBJECT_EXTENDED_LIMIT_INFORMATION info = {};
+            info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+            SetInformationJobObject(h, JobObjectExtendedLimitInformation, &info, sizeof(info));
+        }
+        return h;
+    }();
+    return job;
+}
 
 // Helper function to create error messages
 static std::string get_last_error_message()
@@ -457,6 +478,11 @@ void Process::spawn(const std::string& executable, const std::vector<std::string
     handle_->thread_handle = pi.hThread;
     handle_->process_id = pi.dwProcessId;
     handle_->running = true;
+
+    // Assign to job object so child dies when parent dies
+    HANDLE job = get_child_process_job();
+    if (job)
+        AssignProcessToJobObject(job, pi.hProcess);
 }
 
 WritePipe& Process::stdin_pipe()
