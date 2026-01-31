@@ -209,6 +209,61 @@ using ToolPermissionCallback = std::function<PermissionResult(
 /// @param line Single line of stderr output (without trailing newline)
 using StderrCallback = std::function<void(const std::string& line)>;
 
+// --------------------------------------------------------------------------
+// Hook convenience helpers (new in Python 0.1.26)
+// --------------------------------------------------------------------------
+
+/// Input data for PostToolUseFailure hook callbacks.
+/// Mirrors `PostToolUseFailureHookInput` from Python SDK.
+struct PostToolUseFailureHookInput
+{
+    std::string session_id;
+    std::string transcript_path;
+    std::string cwd;
+    std::optional<std::string> permission_mode = std::nullopt;
+    std::string hook_event_name = HookEvent::PostToolUseFailure;
+    std::string tool_name;
+    json tool_input;
+    std::string tool_use_id;
+    std::string error;
+    std::optional<bool> is_interrupt = std::nullopt;
+
+    /// Parse hook input from CLI-provided JSON.
+    static PostToolUseFailureHookInput from_json(const json& j)
+    {
+        PostToolUseFailureHookInput input;
+        input.session_id = j.value("session_id", "");
+        input.transcript_path = j.value("transcript_path", "");
+        input.cwd = j.value("cwd", "");
+        if (j.contains("permission_mode") && !j.at("permission_mode").is_null())
+            input.permission_mode = j.at("permission_mode").get<std::string>();
+        input.hook_event_name = j.value("hook_event_name", HookEvent::PostToolUseFailure);
+        input.tool_name = j.value("tool_name", "");
+        input.tool_input = j.value("tool_input", json::object());
+        input.tool_use_id = j.value("tool_use_id", "");
+        input.error = j.value("error", "");
+        if (j.contains("is_interrupt") && !j.at("is_interrupt").is_null())
+            input.is_interrupt = j.at("is_interrupt").get<bool>();
+        return input;
+    }
+};
+
+/// Hook-specific output for PostToolUseFailure callbacks.
+/// Mirrors `PostToolUseFailureHookSpecificOutput` from Python SDK.
+struct PostToolUseFailureHookOutput
+{
+    std::string hookEventName = HookEvent::PostToolUseFailure;
+    std::optional<std::string> additionalContext = std::nullopt;
+
+    json to_json() const
+    {
+        json out = {{"hookEventName", hookEventName}};
+        if (additionalContext.has_value())
+            out["additionalContext"] = *additionalContext;
+        return out;
+    }
+};
+
 // ============================================================================
 // Hook Configuration (matches Python SDK HookMatcher)
 // ============================================================================

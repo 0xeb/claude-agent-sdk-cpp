@@ -8,8 +8,8 @@ namespace claude
 
 constexpr int VERSION_MAJOR = 0;
 constexpr int VERSION_MINOR = 1;
-constexpr int VERSION_PATCH = 18;
-// Python SDK version: 0.1.18 (keep C++ in sync)
+constexpr int VERSION_PATCH = 26;
+// Python SDK version: 0.1.26 (keep C++ in sync)
 
 std::string version_string();
 

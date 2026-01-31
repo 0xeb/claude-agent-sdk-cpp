@@ -509,12 +509,22 @@ Register callbacks for specific events during Claude's operation.
 namespace HookEvent {
     constexpr const char* PreToolUse = "PreToolUse";
     constexpr const char* PostToolUse = "PostToolUse";
+    constexpr const char* PostToolUseFailure = "PostToolUseFailure";
     constexpr const char* UserPromptSubmit = "UserPromptSubmit";
     constexpr const char* Stop = "Stop";
     constexpr const char* SubagentStop = "SubagentStop";
     constexpr const char* PreCompact = "PreCompact";
 }
 ```
+
+Hook event overview:
+- **PreToolUse** — before a tool executes (can block or modify input).
+- **PostToolUse** — after a tool succeeds.
+- **PostToolUseFailure** — after a tool fails/throws; input includes `error` and optional `is_interrupt`. Return `{"hookEventName": "PostToolUseFailure", "additionalContext": "<string>"}` to append guidance.
+- **UserPromptSubmit** — when the user submits a prompt.
+- **Stop** — when a session ends normally.
+- **SubagentStop** — when a subagent ends.
+- **PreCompact** — before the CLI compacts long transcripts.
 
 ### Hook Registration
 

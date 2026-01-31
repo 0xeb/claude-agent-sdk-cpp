@@ -204,6 +204,46 @@ TEST(TypesTest, UsageInfo)
     EXPECT_EQ(usage.cache_read_input_tokens, 30);
 }
 
+TEST(TypesTest, PostToolUseFailureHookInputParsing)
+{
+    json payload = {{"session_id", "sess-1"},
+                    {"transcript_path", "C:/tmp/transcript.jsonl"},
+                    {"cwd", "C:/work"},
+                    {"permission_mode", "default"},
+                    {"hook_event_name", HookEvent::PostToolUseFailure},
+                    {"tool_name", "Bash"},
+                    {"tool_input", json{{"command", "exit 1"}}},
+                    {"tool_use_id", "tool_use_123"},
+                    {"error", "exit code 1"},
+                    {"is_interrupt", true}};
+
+    auto parsed = PostToolUseFailureHookInput::from_json(payload);
+
+    EXPECT_EQ(parsed.session_id, "sess-1");
+    EXPECT_EQ(parsed.transcript_path, "C:/tmp/transcript.jsonl");
+    EXPECT_EQ(parsed.cwd, "C:/work");
+    ASSERT_TRUE(parsed.permission_mode.has_value());
+    EXPECT_EQ(*parsed.permission_mode, "default");
+    EXPECT_EQ(parsed.hook_event_name, HookEvent::PostToolUseFailure);
+    EXPECT_EQ(parsed.tool_name, "Bash");
+    EXPECT_EQ(parsed.tool_input.value("command", ""), "exit 1");
+    EXPECT_EQ(parsed.tool_use_id, "tool_use_123");
+    EXPECT_EQ(parsed.error, "exit code 1");
+    ASSERT_TRUE(parsed.is_interrupt.has_value());
+    EXPECT_TRUE(*parsed.is_interrupt);
+}
+
+TEST(TypesTest, PostToolUseFailureHookOutputToJson)
+{
+    PostToolUseFailureHookOutput output;
+    output.additionalContext = "Tool failed; retry with different arguments.";
+
+    auto j = output.to_json();
+    EXPECT_EQ(j["hookEventName"], HookEvent::PostToolUseFailure);
+    ASSERT_TRUE(j.contains("additionalContext"));
+    EXPECT_EQ(j["additionalContext"], "Tool failed; retry with different arguments.");
+}
+
 TEST(TypesTest, CostInfo)
 {
     CostInfo cost;
