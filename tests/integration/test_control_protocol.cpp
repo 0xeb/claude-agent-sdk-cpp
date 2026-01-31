@@ -289,3 +289,46 @@ TEST_F(ControlProtocolTest, MultipleHooks)
 
     EXPECT_GT(hook_count, 0) << "At least one hook should have fired";
 }
+
+TEST_F(ControlProtocolTest, PostToolUseFailureHookIntegration)
+{
+    bool hook_called = false;
+    const std::string context = "Hook saw tool failure; retry differently.";
+
+    opts.hooks[claude::HookEvent::PostToolUseFailure] = {claude::HookMatcher{
+        std::nullopt,
+        {[&](const claude::json& input, const std::string& tool_use_id) -> claude::json
+         {
+             hook_called = true;
+             // Ensure we get a tool name and id back from the CLI.
+             EXPECT_EQ(input.value("hook_event_name", ""), claude::HookEvent::PostToolUseFailure);
+             EXPECT_FALSE(input.value("tool_name", "").empty());
+             EXPECT_FALSE(tool_use_id.empty());
+
+             claude::PostToolUseFailureHookOutput out;
+             out.additionalContext = context;
+             return out.to_json();
+         }}}};
+
+    claude::ClaudeClient client(opts);
+    client.connect();
+    client.send_query("Read the file nonexistent_post_hook_file.txt");
+
+    bool saw_context = false;
+    for (const auto& msg : client.receive_messages())
+    {
+        if (claude::is_assistant_message(msg))
+        {
+            auto text = claude::get_text_content(std::get<claude::AssistantMessage>(msg).content);
+            if (text.find(context) != std::string::npos)
+                saw_context = true;
+        }
+        if (claude::is_result_message(msg))
+            break;
+    }
+
+    client.disconnect();
+
+    EXPECT_TRUE(hook_called) << "PostToolUseFailure hook should fire on tool error";
+    EXPECT_TRUE(saw_context) << "Assistant message should include hook additionalContext";
+}
