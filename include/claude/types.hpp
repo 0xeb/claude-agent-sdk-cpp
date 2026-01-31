@@ -178,6 +178,7 @@ namespace HookEvent
 {
 constexpr const char* PreToolUse = "PreToolUse";
 constexpr const char* PostToolUse = "PostToolUse";
+constexpr const char* PostToolUseFailure = "PostToolUseFailure";
 constexpr const char* UserPromptSubmit = "UserPromptSubmit";
 constexpr const char* Stop = "Stop";
 constexpr const char* SubagentStop = "SubagentStop";
@@ -285,6 +286,7 @@ struct UserMessage
     std::vector<ContentBlock> content;
     std::optional<std::string> uuid;               // v0.1.18: message UUID for rewind/checkpointing
     std::optional<std::string> parent_tool_use_id; // v0.1.18: tool-use linkage (if present)
+    std::optional<json> tool_use_result;           // v0.1.26: tool execution result metadata
     json raw_json; // Original JSON from CLI (optional, for debugging)
 };
 

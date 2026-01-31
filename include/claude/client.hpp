@@ -129,6 +129,9 @@ class ClaudeClient
     void set_permission_mode(const std::string& mode);
     void set_model(const std::string& model);
     void rewind_files(const std::string& user_message_id);
+    /// MCP status (streaming mode only). Returns CLI-reported MCP server status map.
+    /// Throws CLIConnectionError if not connected.
+    json get_mcp_status();
 
     // Initialization info (parity with Python get_server_info())
     // Returns initialization data (commands, output styles, capabilities) if available.

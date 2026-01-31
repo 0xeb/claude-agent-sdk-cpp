@@ -248,6 +248,37 @@ TEST(ParserTest, ParseUserMessageWithUuid)
     EXPECT_EQ(text->text, "Hello");
 }
 
+TEST(ParserTest, ParseUserMessageWithToolUseResult)
+{
+    std::string json = R"({
+        "type": "user",
+        "uuid": "2ace3375-1879-48a0-a421-6bce25a9295a",
+        "tool_use_result": {
+            "filePath": "/path/to/file.py",
+            "oldString": "old code",
+            "newString": "new code",
+            "userModified": false
+        },
+        "message": {
+            "role": "user",
+            "content": [
+                {"type": "tool_result", "tool_use_id": "toolu_vrtx_01KXW", "content": "File updated"}
+            ]
+        }
+    })";
+
+    Message msg = MessageParser::parse_message(json);
+
+    ASSERT_TRUE(std::holds_alternative<UserMessage>(msg));
+    auto& user = std::get<UserMessage>(msg);
+    ASSERT_TRUE(user.tool_use_result.has_value());
+    auto tur = *user.tool_use_result;
+    EXPECT_EQ(tur.value("filePath", ""), "/path/to/file.py");
+    EXPECT_EQ(tur.value("oldString", ""), "old code");
+    EXPECT_EQ(tur.value("newString", ""), "new code");
+    EXPECT_FALSE(tur.value("userModified", true));
+}
+
 TEST(ParserTest, ParseMultipleLinesNewline)
 {
     MessageParser parser;

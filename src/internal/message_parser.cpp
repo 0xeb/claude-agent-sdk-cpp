@@ -204,6 +204,8 @@ UserMessage MessageParser::parse_user_message(const claude::json& j)
         msg.uuid = j["uuid"].get<std::string>();
     if (j.contains("parent_tool_use_id") && j["parent_tool_use_id"].is_string())
         msg.parent_tool_use_id = j["parent_tool_use_id"].get<std::string>();
+    if (j.contains("tool_use_result") && j["tool_use_result"].is_object())
+        msg.tool_use_result = j["tool_use_result"];
 
     // The CLI may wrap the actual message in a "message" field
     const claude::json* message_ptr = &j;
