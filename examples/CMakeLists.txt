@@ -160,3 +160,25 @@ set_target_properties(agents PROPERTIES FOLDER "Examples")
 # Advanced and non-mirrored examples (including decorators and MCP showcases)
 # are not built as part of the core SDK example set and are maintained
 # separately from this directory.
+
+add_executable(tools_option
+    tools_option.cpp
+)
+
+target_link_libraries(tools_option
+    PRIVATE
+        claude_sdk
+)
+
+set_target_properties(tools_option PROPERTIES FOLDER "Examples")
+
+add_executable(filesystem_agents
+    filesystem_agents.cpp
+)
+
+target_link_libraries(filesystem_agents
+    PRIVATE
+        claude_sdk
+)
+
+set_target_properties(filesystem_agents PROPERTIES FOLDER "Examples")
