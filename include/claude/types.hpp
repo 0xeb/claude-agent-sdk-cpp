@@ -570,15 +570,6 @@ struct ClaudeOptions
     // are allowed (cli_path or CLAUDE_CLI_PATH). PATH/home discovery is disabled.
     bool require_explicit_cli = false;
 
-    // Security: CLI path allowlist for production use (v0.1.11+)
-    // If non-empty, only CLI paths in this list are allowed. Provides protection against
-    // PATH poisoning and unauthorized CLI execution.
-    std::vector<std::string> allowed_cli_paths;
-
-    // Security: Optional SHA256 hash for CLI integrity verification (v0.1.11+)
-    // If set, the CLI executable must match this hash. Format: 64-character hex string.
-    std::optional<std::string> cli_hash_sha256;
-
     // Security: Enforce version check (v0.1.11+)
     // When true (default), version check failures cause hard errors instead of warnings.
     // Set to false only for testing/development.
