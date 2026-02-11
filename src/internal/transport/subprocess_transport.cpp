@@ -1,6 +1,5 @@
 #include "subprocess_transport.hpp"
 
-#include "cli_verification.hpp"
 #include "subprocess_env.hpp"
 
 #include <chrono>
@@ -729,18 +728,6 @@ std::string SubprocessTransport::find_cli() const
         std::error_code ec;
         if (!fs::exists(path, ec) || ec)
             throw CLINotFoundError("CLI path does not exist: " + path);
-
-        // Security: Check allowlist if configured
-        if (!claude_agent_sdk::internal::verify_cli_path_allowed(path, options_.allowed_cli_paths))
-        {
-            throw CLINotFoundError("CLI path not in allowlist: " + path +
-                                   ". Configure allowed_cli_paths or use explicit path.");
-        }
-
-        // Security: Verify hash if configured
-        std::string error_msg;
-        if (!claude_agent_sdk::internal::verify_cli_hash(path, options_.cli_hash_sha256, error_msg))
-            throw CLINotFoundError("CLI integrity check failed: " + error_msg);
 
         return path;
     };
