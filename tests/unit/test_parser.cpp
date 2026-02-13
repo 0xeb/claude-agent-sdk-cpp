@@ -570,3 +570,51 @@ TEST(ParserTest, StreamEventPrioritizesTopLevelOverData)
     EXPECT_EQ(stream.uuid, "top_level_uuid");
     EXPECT_EQ(stream.session_id, "top_level_session");
 }
+
+// ============================================================================
+// v0.1.35: AssistantMessage error field from outer object
+// ============================================================================
+
+TEST(MessageParserTest, AssistantMessageErrorFromOuterObject)
+{
+    // The error field should be read from the outer/top-level object,
+    // not from the inner "message" object (fix for Python commit 94eaf75)
+    std::string json = R"({
+        "type": "assistant",
+        "error": "rate_limit",
+        "message": {
+            "role": "assistant",
+            "content": [{"type": "text", "text": "Rate limited"}],
+            "model": "claude-sonnet-4-5"
+        }
+    })";
+
+    Message msg = MessageParser::parse_message(json);
+
+    ASSERT_TRUE(is_assistant_message(msg));
+    auto& assistant = std::get<AssistantMessage>(msg);
+    ASSERT_TRUE(assistant.error.has_value());
+    EXPECT_EQ(*assistant.error, AssistantMessageError::RateLimit);
+    EXPECT_EQ(assistant.model, "claude-sonnet-4-5");
+}
+
+TEST(MessageParserTest, AssistantMessageErrorNotFromInnerMessage)
+{
+    // Error field inside inner "message" object should NOT be picked up
+    std::string json = R"({
+        "type": "assistant",
+        "message": {
+            "role": "assistant",
+            "content": [{"type": "text", "text": "OK"}],
+            "model": "claude-sonnet-4-5",
+            "error": "server_error"
+        }
+    })";
+
+    Message msg = MessageParser::parse_message(json);
+
+    ASSERT_TRUE(is_assistant_message(msg));
+    auto& assistant = std::get<AssistantMessage>(msg);
+    // Error field was in inner object only, not outer - should not be set
+    EXPECT_FALSE(assistant.error.has_value());
+}

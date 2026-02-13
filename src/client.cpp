@@ -412,8 +412,27 @@ class ClaudeClient::Impl
             }
         }
 
+        // Build agents configuration for initialization
+        json agents_config = json(nullptr);
+        if (!options_.agents.empty())
+        {
+            agents_config = json::object();
+            for (const auto& [name, def] : options_.agents)
+            {
+                json agent_obj = json::object();
+                agent_obj["description"] = def.description;
+                agent_obj["prompt"] = def.prompt;
+                if (def.tools.has_value())
+                    agent_obj["tools"] = *def.tools;
+                if (def.model.has_value())
+                    agent_obj["model"] = *def.model;
+                agents_config[name] = agent_obj;
+            }
+        }
+
         // Build initialize request data
-        json request_data = {{"hooks", hooks_config.empty() ? nullptr : hooks_config}};
+        json request_data = {{"hooks", hooks_config.empty() ? nullptr : hooks_config},
+                             {"agents", agents_config}};
 
         // Send initialize request and wait for response
         try

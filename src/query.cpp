@@ -95,10 +95,17 @@ QueryResult query(const std::string& prompt, const ClaudeOptions& options)
         // Create one-shot transport with prompt
         auto transport = create_oneshot_transport(prompt, options);
 
-        // Connect to CLI (will run with --print flag)
+        // Connect to CLI
         transport->connect();
 
-        // In print mode, stdin is closed automatically and prompt is passed via CLI args
+        // v0.1.35: Always use streaming mode - send prompt via stdin as user message
+        // then close stdin to signal end of input
+        json user_msg = {{"type", "user"},
+                         {"message", {{"role", "user"}, {"content", prompt}}},
+                         {"parent_tool_use_id", nullptr},
+                         {"session_id", ""}};
+        transport->write(user_msg.dump() + "\n");
+        transport->end_input();
 
         // Collect all messages until transport closes
         std::vector<Message> all_messages;

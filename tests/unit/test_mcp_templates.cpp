@@ -418,3 +418,75 @@ TEST(McpIntegration, ComplexTypes)
     double value = std::stod(text);
     EXPECT_NEAR(value, 15.0, 0.001);
 }
+
+// ============================================================================
+// Tool Annotations Tests (v0.1.35)
+// ============================================================================
+
+TEST(McpAnnotations, ToolAnnotationsToJson)
+{
+    ToolAnnotations ann;
+    ann.title = "My Tool";
+    ann.read_only_hint = true;
+    ann.destructive_hint = false;
+
+    auto j = ann.to_json();
+    EXPECT_EQ(j["title"], "My Tool");
+    EXPECT_EQ(j["readOnlyHint"], true);
+    EXPECT_EQ(j["destructiveHint"], false);
+    // Fields not set should be absent
+    EXPECT_FALSE(j.contains("idempotentHint"));
+    EXPECT_FALSE(j.contains("openWorldHint"));
+}
+
+TEST(McpAnnotations, ToolAnnotationsHasAny)
+{
+    ToolAnnotations empty;
+    EXPECT_FALSE(empty.has_any());
+
+    ToolAnnotations with_title;
+    with_title.title = "test";
+    EXPECT_TRUE(with_title.has_any());
+}
+
+TEST(McpAnnotations, ToolsListResponseIncludesAnnotations)
+{
+    ToolAnnotations ann;
+    ann.title = "Read File";
+    ann.read_only_hint = true;
+    ann.destructive_hint = false;
+
+    auto server_handler =
+        server("annotated-server", "1.0")
+            .add_tool(make_tool("read_file", "Read a file", [](std::string path) { return path; },
+                                {"path"}),
+                      ann)
+            .build();
+
+    json request = {{"jsonrpc", "2.0"}, {"method", "tools/list"}, {"id", 1}};
+    json response = server_handler(request);
+
+    ASSERT_TRUE(response.contains("result"));
+    auto& tools = response["result"]["tools"];
+    ASSERT_EQ(tools.size(), 1);
+    ASSERT_TRUE(tools[0].contains("annotations"));
+    EXPECT_EQ(tools[0]["annotations"]["title"], "Read File");
+    EXPECT_EQ(tools[0]["annotations"]["readOnlyHint"], true);
+    EXPECT_EQ(tools[0]["annotations"]["destructiveHint"], false);
+}
+
+TEST(McpAnnotations, ToolsListResponseOmitsEmptyAnnotations)
+{
+    auto server_handler =
+        server("plain-server", "1.0")
+            .add_tool(
+                make_tool("echo", "Echo input", [](std::string s) { return s; }, {"input"}))
+            .build();
+
+    json request = {{"jsonrpc", "2.0"}, {"method", "tools/list"}, {"id", 1}};
+    json response = server_handler(request);
+
+    auto& tools = response["result"]["tools"];
+    ASSERT_EQ(tools.size(), 1);
+    EXPECT_FALSE(tools[0].contains("annotations")); // No annotations set
+}

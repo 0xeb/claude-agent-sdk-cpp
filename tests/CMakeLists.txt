@@ -26,6 +26,7 @@ add_executable(test_claude
     unit/test_mcp_templates.cpp
     unit/test_parity_fields.cpp
     unit/test_temp_file_security.cpp
+    unit/test_thinking_config.cpp
     integration/sdk_mcp_integration.cpp
     integration/sdk_mcp_integration_errors.cpp
     integration/test_query.cpp
@@ -37,6 +38,7 @@ add_executable(test_claude
     integration/test_streaming_integration.cpp
     integration/test_session_integration.cpp
     integration/test_max_thinking_tokens.cpp
+    integration/test_v0135_parity.cpp
     extra/test_multithreading.cpp
     # Extension tests
     ext/test_session_storage.cpp

@@ -174,10 +174,10 @@ AssistantMessage MessageParser::parse_assistant_message(const claude::json& j)
     if (message.contains("model") && message["model"].is_string())
         msg.model = message["model"].get<std::string>();
 
-    // Extract error field if present
-    if (message.contains("error") && message["error"].is_string())
+    // Extract error field if present (from outer object, not inner message)
+    if (j.contains("error") && j["error"].is_string())
     {
-        std::string error_str = message["error"].get<std::string>();
+        std::string error_str = j["error"].get<std::string>();
         if (error_str == "authentication_failed")
             msg.error = AssistantMessageError::AuthenticationFailed;
         else if (error_str == "billing_error")

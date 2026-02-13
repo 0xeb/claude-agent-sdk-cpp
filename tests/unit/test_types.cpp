@@ -290,3 +290,218 @@ TEST(TypesTest, ClaudeOptionsSystemPromptAppend)
     EXPECT_EQ(opts.system_prompt, "Custom prompt");
     EXPECT_EQ(opts.system_prompt_append, "Always end your response with a fun fact.");
 }
+
+// ============================================================================
+// v0.1.35 Parity Tests: ThinkingConfig, EffortLevel, Hook Events
+// ============================================================================
+
+TEST(TypesTest, ThinkingConfigAdaptive)
+{
+    ThinkingConfigAdaptive config;
+    EXPECT_EQ(config.type, "adaptive");
+
+    // Can hold in variant
+    ThinkingConfig tc = config;
+    EXPECT_TRUE(std::holds_alternative<ThinkingConfigAdaptive>(tc));
+}
+
+TEST(TypesTest, ThinkingConfigEnabled)
+{
+    ThinkingConfigEnabled config(8000);
+    EXPECT_EQ(config.type, "enabled");
+    EXPECT_EQ(config.budget_tokens, 8000);
+
+    ThinkingConfig tc = config;
+    EXPECT_TRUE(std::holds_alternative<ThinkingConfigEnabled>(tc));
+    EXPECT_EQ(std::get<ThinkingConfigEnabled>(tc).budget_tokens, 8000);
+}
+
+TEST(TypesTest, ThinkingConfigDisabled)
+{
+    ThinkingConfigDisabled config;
+    EXPECT_EQ(config.type, "disabled");
+
+    ThinkingConfig tc = config;
+    EXPECT_TRUE(std::holds_alternative<ThinkingConfigDisabled>(tc));
+}
+
+TEST(TypesTest, EffortConstants)
+{
+    EXPECT_STREQ(Effort::Low, "low");
+    EXPECT_STREQ(Effort::Medium, "medium");
+    EXPECT_STREQ(Effort::High, "high");
+    EXPECT_STREQ(Effort::Max, "max");
+}
+
+TEST(TypesTest, ClaudeOptionsThinkingAndEffort)
+{
+    ClaudeOptions opts;
+    EXPECT_FALSE(opts.thinking.has_value());
+    EXPECT_FALSE(opts.effort.has_value());
+
+    opts.thinking = ThinkingConfigAdaptive{};
+    opts.effort = Effort::High;
+
+    EXPECT_TRUE(opts.thinking.has_value());
+    EXPECT_TRUE(std::holds_alternative<ThinkingConfigAdaptive>(*opts.thinking));
+    EXPECT_TRUE(opts.effort.has_value());
+    EXPECT_EQ(*opts.effort, "high");
+}
+
+TEST(TypesTest, HookEventAllValues)
+{
+    // 10 hook events in v0.1.35
+    EXPECT_STREQ(HookEvent::PreToolUse, "PreToolUse");
+    EXPECT_STREQ(HookEvent::PostToolUse, "PostToolUse");
+    EXPECT_STREQ(HookEvent::PostToolUseFailure, "PostToolUseFailure");
+    EXPECT_STREQ(HookEvent::UserPromptSubmit, "UserPromptSubmit");
+    EXPECT_STREQ(HookEvent::Stop, "Stop");
+    EXPECT_STREQ(HookEvent::SubagentStop, "SubagentStop");
+    EXPECT_STREQ(HookEvent::PreCompact, "PreCompact");
+    EXPECT_STREQ(HookEvent::Notification, "Notification");
+    EXPECT_STREQ(HookEvent::SubagentStart, "SubagentStart");
+    EXPECT_STREQ(HookEvent::PermissionRequest, "PermissionRequest");
+}
+
+TEST(TypesTest, PreToolUseHookInputParsing)
+{
+    json payload = {{"session_id", "sess-1"},
+                    {"transcript_path", "/tmp/t.jsonl"},
+                    {"cwd", "/work"},
+                    {"hook_event_name", HookEvent::PreToolUse},
+                    {"tool_name", "Write"},
+                    {"tool_input", json{{"path", "test.txt"}}},
+                    {"tool_use_id", "tu_001"}};
+
+    auto parsed = PreToolUseHookInput::from_json(payload);
+    EXPECT_EQ(parsed.session_id, "sess-1");
+    EXPECT_EQ(parsed.hook_event_name, HookEvent::PreToolUse);
+    EXPECT_EQ(parsed.tool_name, "Write");
+    EXPECT_EQ(parsed.tool_use_id, "tu_001");
+    EXPECT_EQ(parsed.tool_input["path"], "test.txt");
+}
+
+TEST(TypesTest, PostToolUseHookInputParsing)
+{
+    json payload = {{"session_id", "sess-2"},
+                    {"transcript_path", "/tmp/t.jsonl"},
+                    {"cwd", "/work"},
+                    {"hook_event_name", HookEvent::PostToolUse},
+                    {"tool_name", "Read"},
+                    {"tool_input", json{{"path", "file.txt"}}},
+                    {"tool_response", "file contents here"},
+                    {"tool_use_id", "tu_002"}};
+
+    auto parsed = PostToolUseHookInput::from_json(payload);
+    EXPECT_EQ(parsed.hook_event_name, HookEvent::PostToolUse);
+    EXPECT_EQ(parsed.tool_name, "Read");
+    EXPECT_EQ(parsed.tool_use_id, "tu_002");
+    EXPECT_EQ(parsed.tool_response, "file contents here");
+}
+
+TEST(TypesTest, NotificationHookInputParsing)
+{
+    json payload = {{"session_id", "sess-3"},
+                    {"transcript_path", "/tmp/t.jsonl"},
+                    {"cwd", "/work"},
+                    {"hook_event_name", HookEvent::Notification},
+                    {"message", "Task completed"},
+                    {"title", "Info"},
+                    {"notification_type", "info"}};
+
+    auto parsed = NotificationHookInput::from_json(payload);
+    EXPECT_EQ(parsed.hook_event_name, HookEvent::Notification);
+    EXPECT_EQ(parsed.message, "Task completed");
+    ASSERT_TRUE(parsed.title.has_value());
+    EXPECT_EQ(*parsed.title, "Info");
+    EXPECT_EQ(parsed.notification_type, "info");
+}
+
+TEST(TypesTest, SubagentStartHookInputParsing)
+{
+    json payload = {{"session_id", "sess-4"},
+                    {"transcript_path", "/tmp/t.jsonl"},
+                    {"cwd", "/work"},
+                    {"hook_event_name", HookEvent::SubagentStart},
+                    {"agent_id", "agent-123"},
+                    {"agent_type", "plan"}};
+
+    auto parsed = SubagentStartHookInput::from_json(payload);
+    EXPECT_EQ(parsed.hook_event_name, HookEvent::SubagentStart);
+    EXPECT_EQ(parsed.agent_id, "agent-123");
+    EXPECT_EQ(parsed.agent_type, "plan");
+}
+
+TEST(TypesTest, SubagentStopHookInputParsing)
+{
+    json payload = {{"session_id", "sess-5"},
+                    {"transcript_path", "/tmp/t.jsonl"},
+                    {"cwd", "/work"},
+                    {"hook_event_name", HookEvent::SubagentStop},
+                    {"stop_hook_active", true},
+                    {"agent_id", "agent-456"},
+                    {"agent_transcript_path", "/tmp/agent.jsonl"},
+                    {"agent_type", "explore"}};
+
+    auto parsed = SubagentStopHookInput::from_json(payload);
+    EXPECT_EQ(parsed.hook_event_name, HookEvent::SubagentStop);
+    EXPECT_TRUE(parsed.stop_hook_active);
+    EXPECT_EQ(parsed.agent_id, "agent-456");
+    EXPECT_EQ(parsed.agent_transcript_path, "/tmp/agent.jsonl");
+    EXPECT_EQ(parsed.agent_type, "explore");
+}
+
+TEST(TypesTest, PermissionRequestHookInputParsing)
+{
+    json suggestions = json::array({json{{"type", "addRules"}, {"behavior", "allow"}}});
+    json payload = {{"session_id", "sess-6"},
+                    {"transcript_path", "/tmp/t.jsonl"},
+                    {"cwd", "/work"},
+                    {"hook_event_name", HookEvent::PermissionRequest},
+                    {"tool_name", "Bash"},
+                    {"tool_input", json{{"command", "ls"}}},
+                    {"permission_suggestions", suggestions}};
+
+    auto parsed = PermissionRequestHookInput::from_json(payload);
+    EXPECT_EQ(parsed.hook_event_name, HookEvent::PermissionRequest);
+    EXPECT_EQ(parsed.tool_name, "Bash");
+    ASSERT_TRUE(parsed.permission_suggestions.has_value());
+    EXPECT_TRUE(parsed.permission_suggestions->is_array());
+}
+
+TEST(TypesTest, PreToolUseHookOutputToJson)
+{
+    PreToolUseHookOutput output;
+    output.permissionDecision = "deny";
+    output.permissionDecisionReason = "not allowed";
+    output.additionalContext = "blocked by policy";
+
+    auto j = output.to_json();
+    EXPECT_EQ(j["hookEventName"], HookEvent::PreToolUse);
+    EXPECT_EQ(j["permissionDecision"], "deny");
+    EXPECT_EQ(j["permissionDecisionReason"], "not allowed");
+    EXPECT_EQ(j["additionalContext"], "blocked by policy");
+    EXPECT_FALSE(j.contains("updatedInput")); // not set
+}
+
+TEST(TypesTest, PostToolUseHookOutputToJson)
+{
+    PostToolUseHookOutput output;
+    output.additionalContext = "tool succeeded";
+    output.updatedMCPToolOutput = json{{"modified", true}};
+
+    auto j = output.to_json();
+    EXPECT_EQ(j["hookEventName"], HookEvent::PostToolUse);
+    EXPECT_EQ(j["additionalContext"], "tool succeeded");
+    EXPECT_EQ(j["updatedMCPToolOutput"]["modified"], true);
+}
+
+TEST(TypesTest, PermissionRequestHookOutputToJson)
+{
+    PermissionRequestHookOutput output;
+    output.decision = json{{"behavior", "allow"}, {"updatedInput", json::object()}};
+
+    auto j = output.to_json();
+    EXPECT_EQ(j["hookEventName"], HookEvent::PermissionRequest);
+    EXPECT_EQ(j["decision"]["behavior"], "allow");
+}
