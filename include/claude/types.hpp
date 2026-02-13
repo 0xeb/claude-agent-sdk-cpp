@@ -173,7 +173,7 @@ using PermissionResult = std::variant<PermissionResultAllow, PermissionResultDen
 // Hook Event Types (matches Python SDK)
 // ============================================================================
 
-/// Supported hook event types
+/// Supported hook event types (matches Python SDK v0.1.35)
 namespace HookEvent
 {
 constexpr const char* PreToolUse = "PreToolUse";
@@ -183,6 +183,9 @@ constexpr const char* UserPromptSubmit = "UserPromptSubmit";
 constexpr const char* Stop = "Stop";
 constexpr const char* SubagentStop = "SubagentStop";
 constexpr const char* PreCompact = "PreCompact";
+constexpr const char* Notification = "Notification";
+constexpr const char* SubagentStart = "SubagentStart";
+constexpr const char* PermissionRequest = "PermissionRequest";
 } // namespace HookEvent
 
 // ============================================================================
@@ -213,6 +216,66 @@ using StderrCallback = std::function<void(const std::string& line)>;
 // Hook convenience helpers (new in Python 0.1.26)
 // --------------------------------------------------------------------------
 
+/// Input data for PreToolUse hook callbacks.
+/// Mirrors `PreToolUseHookInput` from Python SDK.
+struct PreToolUseHookInput
+{
+    std::string session_id;
+    std::string transcript_path;
+    std::string cwd;
+    std::optional<std::string> permission_mode = std::nullopt;
+    std::string hook_event_name = HookEvent::PreToolUse;
+    std::string tool_name;
+    json tool_input;
+    std::string tool_use_id;
+
+    static PreToolUseHookInput from_json(const json& j)
+    {
+        PreToolUseHookInput input;
+        input.session_id = j.value("session_id", "");
+        input.transcript_path = j.value("transcript_path", "");
+        input.cwd = j.value("cwd", "");
+        if (j.contains("permission_mode") && !j.at("permission_mode").is_null())
+            input.permission_mode = j.at("permission_mode").get<std::string>();
+        input.hook_event_name = j.value("hook_event_name", HookEvent::PreToolUse);
+        input.tool_name = j.value("tool_name", "");
+        input.tool_input = j.value("tool_input", json::object());
+        input.tool_use_id = j.value("tool_use_id", "");
+        return input;
+    }
+};
+
+/// Input data for PostToolUse hook callbacks.
+/// Mirrors `PostToolUseHookInput` from Python SDK.
+struct PostToolUseHookInput
+{
+    std::string session_id;
+    std::string transcript_path;
+    std::string cwd;
+    std::optional<std::string> permission_mode = std::nullopt;
+    std::string hook_event_name = HookEvent::PostToolUse;
+    std::string tool_name;
+    json tool_input;
+    json tool_response;
+    std::string tool_use_id;
+
+    static PostToolUseHookInput from_json(const json& j)
+    {
+        PostToolUseHookInput input;
+        input.session_id = j.value("session_id", "");
+        input.transcript_path = j.value("transcript_path", "");
+        input.cwd = j.value("cwd", "");
+        if (j.contains("permission_mode") && !j.at("permission_mode").is_null())
+            input.permission_mode = j.at("permission_mode").get<std::string>();
+        input.hook_event_name = j.value("hook_event_name", HookEvent::PostToolUse);
+        input.tool_name = j.value("tool_name", "");
+        input.tool_input = j.value("tool_input", json::object());
+        input.tool_response = j.value("tool_response", json());
+        input.tool_use_id = j.value("tool_use_id", "");
+        return input;
+    }
+};
+
 /// Input data for PostToolUseFailure hook callbacks.
 /// Mirrors `PostToolUseFailureHookInput` from Python SDK.
 struct PostToolUseFailureHookInput
@@ -228,7 +291,6 @@ struct PostToolUseFailureHookInput
     std::string error;
     std::optional<bool> is_interrupt = std::nullopt;
 
-    /// Parse hook input from CLI-provided JSON.
     static PostToolUseFailureHookInput from_json(const json& j)
     {
         PostToolUseFailureHookInput input;
@@ -248,8 +310,171 @@ struct PostToolUseFailureHookInput
     }
 };
 
+/// Input data for Notification hook callbacks.
+/// Mirrors `NotificationHookInput` from Python SDK.
+struct NotificationHookInput
+{
+    std::string session_id;
+    std::string transcript_path;
+    std::string cwd;
+    std::optional<std::string> permission_mode = std::nullopt;
+    std::string hook_event_name = HookEvent::Notification;
+    std::string message;
+    std::optional<std::string> title = std::nullopt;
+    std::string notification_type;
+
+    static NotificationHookInput from_json(const json& j)
+    {
+        NotificationHookInput input;
+        input.session_id = j.value("session_id", "");
+        input.transcript_path = j.value("transcript_path", "");
+        input.cwd = j.value("cwd", "");
+        if (j.contains("permission_mode") && !j.at("permission_mode").is_null())
+            input.permission_mode = j.at("permission_mode").get<std::string>();
+        input.hook_event_name = j.value("hook_event_name", HookEvent::Notification);
+        input.message = j.value("message", "");
+        if (j.contains("title") && !j.at("title").is_null())
+            input.title = j.at("title").get<std::string>();
+        input.notification_type = j.value("notification_type", "");
+        return input;
+    }
+};
+
+/// Input data for SubagentStart hook callbacks.
+/// Mirrors `SubagentStartHookInput` from Python SDK.
+struct SubagentStartHookInput
+{
+    std::string session_id;
+    std::string transcript_path;
+    std::string cwd;
+    std::optional<std::string> permission_mode = std::nullopt;
+    std::string hook_event_name = HookEvent::SubagentStart;
+    std::string agent_id;
+    std::string agent_type;
+
+    static SubagentStartHookInput from_json(const json& j)
+    {
+        SubagentStartHookInput input;
+        input.session_id = j.value("session_id", "");
+        input.transcript_path = j.value("transcript_path", "");
+        input.cwd = j.value("cwd", "");
+        if (j.contains("permission_mode") && !j.at("permission_mode").is_null())
+            input.permission_mode = j.at("permission_mode").get<std::string>();
+        input.hook_event_name = j.value("hook_event_name", HookEvent::SubagentStart);
+        input.agent_id = j.value("agent_id", "");
+        input.agent_type = j.value("agent_type", "");
+        return input;
+    }
+};
+
+/// Input data for SubagentStop hook callbacks.
+/// Mirrors `SubagentStopHookInput` from Python SDK.
+struct SubagentStopHookInput
+{
+    std::string session_id;
+    std::string transcript_path;
+    std::string cwd;
+    std::optional<std::string> permission_mode = std::nullopt;
+    std::string hook_event_name = HookEvent::SubagentStop;
+    bool stop_hook_active = false;
+    std::string agent_id;
+    std::string agent_transcript_path;
+    std::string agent_type;
+
+    static SubagentStopHookInput from_json(const json& j)
+    {
+        SubagentStopHookInput input;
+        input.session_id = j.value("session_id", "");
+        input.transcript_path = j.value("transcript_path", "");
+        input.cwd = j.value("cwd", "");
+        if (j.contains("permission_mode") && !j.at("permission_mode").is_null())
+            input.permission_mode = j.at("permission_mode").get<std::string>();
+        input.hook_event_name = j.value("hook_event_name", HookEvent::SubagentStop);
+        input.stop_hook_active = j.value("stop_hook_active", false);
+        input.agent_id = j.value("agent_id", "");
+        input.agent_transcript_path = j.value("agent_transcript_path", "");
+        input.agent_type = j.value("agent_type", "");
+        return input;
+    }
+};
+
+/// Input data for PermissionRequest hook callbacks.
+/// Mirrors `PermissionRequestHookInput` from Python SDK.
+struct PermissionRequestHookInput
+{
+    std::string session_id;
+    std::string transcript_path;
+    std::string cwd;
+    std::optional<std::string> permission_mode = std::nullopt;
+    std::string hook_event_name = HookEvent::PermissionRequest;
+    std::string tool_name;
+    json tool_input;
+    std::optional<json> permission_suggestions = std::nullopt;
+
+    static PermissionRequestHookInput from_json(const json& j)
+    {
+        PermissionRequestHookInput input;
+        input.session_id = j.value("session_id", "");
+        input.transcript_path = j.value("transcript_path", "");
+        input.cwd = j.value("cwd", "");
+        if (j.contains("permission_mode") && !j.at("permission_mode").is_null())
+            input.permission_mode = j.at("permission_mode").get<std::string>();
+        input.hook_event_name = j.value("hook_event_name", HookEvent::PermissionRequest);
+        input.tool_name = j.value("tool_name", "");
+        input.tool_input = j.value("tool_input", json::object());
+        if (j.contains("permission_suggestions") && !j.at("permission_suggestions").is_null())
+            input.permission_suggestions = j.at("permission_suggestions");
+        return input;
+    }
+};
+
+// ============================================================================
+// Hook-Specific Output Types (matches Python SDK v0.1.35)
+// ============================================================================
+
+/// Hook-specific output for PreToolUse callbacks.
+struct PreToolUseHookOutput
+{
+    std::string hookEventName = HookEvent::PreToolUse;
+    std::optional<std::string> permissionDecision = std::nullopt; // "allow", "deny", "ask"
+    std::optional<std::string> permissionDecisionReason = std::nullopt;
+    std::optional<json> updatedInput = std::nullopt;
+    std::optional<std::string> additionalContext = std::nullopt;
+
+    json to_json() const
+    {
+        json out = {{"hookEventName", hookEventName}};
+        if (permissionDecision.has_value())
+            out["permissionDecision"] = *permissionDecision;
+        if (permissionDecisionReason.has_value())
+            out["permissionDecisionReason"] = *permissionDecisionReason;
+        if (updatedInput.has_value())
+            out["updatedInput"] = *updatedInput;
+        if (additionalContext.has_value())
+            out["additionalContext"] = *additionalContext;
+        return out;
+    }
+};
+
+/// Hook-specific output for PostToolUse callbacks.
+struct PostToolUseHookOutput
+{
+    std::string hookEventName = HookEvent::PostToolUse;
+    std::optional<std::string> additionalContext = std::nullopt;
+    std::optional<json> updatedMCPToolOutput = std::nullopt;
+
+    json to_json() const
+    {
+        json out = {{"hookEventName", hookEventName}};
+        if (additionalContext.has_value())
+            out["additionalContext"] = *additionalContext;
+        if (updatedMCPToolOutput.has_value())
+            out["updatedMCPToolOutput"] = *updatedMCPToolOutput;
+        return out;
+    }
+};
+
 /// Hook-specific output for PostToolUseFailure callbacks.
-/// Mirrors `PostToolUseFailureHookSpecificOutput` from Python SDK.
 struct PostToolUseFailureHookOutput
 {
     std::string hookEventName = HookEvent::PostToolUseFailure;
@@ -260,6 +485,49 @@ struct PostToolUseFailureHookOutput
         json out = {{"hookEventName", hookEventName}};
         if (additionalContext.has_value())
             out["additionalContext"] = *additionalContext;
+        return out;
+    }
+};
+
+/// Hook-specific output for Notification callbacks.
+struct NotificationHookOutput
+{
+    std::string hookEventName = HookEvent::Notification;
+    std::optional<std::string> additionalContext = std::nullopt;
+
+    json to_json() const
+    {
+        json out = {{"hookEventName", hookEventName}};
+        if (additionalContext.has_value())
+            out["additionalContext"] = *additionalContext;
+        return out;
+    }
+};
+
+/// Hook-specific output for SubagentStart callbacks.
+struct SubagentStartHookOutput
+{
+    std::string hookEventName = HookEvent::SubagentStart;
+    std::optional<std::string> additionalContext = std::nullopt;
+
+    json to_json() const
+    {
+        json out = {{"hookEventName", hookEventName}};
+        if (additionalContext.has_value())
+            out["additionalContext"] = *additionalContext;
+        return out;
+    }
+};
+
+/// Hook-specific output for PermissionRequest callbacks.
+struct PermissionRequestHookOutput
+{
+    std::string hookEventName = HookEvent::PermissionRequest;
+    json decision; // Required decision object
+
+    json to_json() const
+    {
+        json out = {{"hookEventName", hookEventName}, {"decision", decision}};
         return out;
     }
 };
@@ -536,6 +804,42 @@ struct SandboxSettings
     std::optional<bool> enableWeakerNestedSandbox;
 };
 
+// ============================================================================
+// ThinkingConfig Types (matches Python SDK v0.1.35)
+// ============================================================================
+
+/// Effort level for Claude's responses
+namespace Effort
+{
+constexpr const char* Low = "low";
+constexpr const char* Medium = "medium";
+constexpr const char* High = "high";
+constexpr const char* Max = "max";
+} // namespace Effort
+
+/// ThinkingConfig variant: adaptive thinking
+struct ThinkingConfigAdaptive
+{
+    std::string type = "adaptive";
+};
+
+/// ThinkingConfig variant: enabled with explicit budget
+struct ThinkingConfigEnabled
+{
+    std::string type = "enabled";
+    int budget_tokens;
+    explicit ThinkingConfigEnabled(int budget) : budget_tokens(budget) {}
+};
+
+/// ThinkingConfig variant: thinking disabled
+struct ThinkingConfigDisabled
+{
+    std::string type = "disabled";
+};
+
+/// ThinkingConfig discriminated union
+using ThinkingConfig = std::variant<ThinkingConfigAdaptive, ThinkingConfigEnabled, ThinkingConfigDisabled>;
+
 // Configuration options
 struct ClaudeOptions
 {
@@ -618,7 +922,9 @@ struct ClaudeOptions
     std::vector<std::string> setting_sources; // Setting sources
     bool continue_conversation = false;       // Continue previous conversation
     bool fork_session = false;                // Fork the session
-    std::optional<int> max_thinking_tokens;   // v0.1.6: limit thinking tokens
+    std::optional<int> max_thinking_tokens;          // v0.1.6: limit thinking tokens (deprecated, use thinking)
+    std::optional<ThinkingConfig> thinking;            // v0.1.35: ThinkingConfig (takes precedence over max_thinking_tokens)
+    std::optional<std::string> effort;                 // v0.1.35: Effort level ("low", "medium", "high", "max")
     std::optional<json> output_format;        // v0.1.8: Structured output format (JSON schema)
     bool enable_file_checkpointing = false;   // v0.1.15: enable file checkpointing/rewind_files
 

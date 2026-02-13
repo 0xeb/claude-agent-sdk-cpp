@@ -593,24 +593,7 @@ std::vector<std::string> SubprocessCLITransport::build_command()
     if (options_.fork_session)
         cmd.push_back("--fork-session");
 
-    // Agent definitions (JSON format)
-    if (!options_.agents.empty())
-    {
-        json agents_json = json::object();
-        for (const auto& [name, def] : options_.agents)
-        {
-            json agent_obj = json::object();
-            agent_obj["description"] = def.description;
-            agent_obj["prompt"] = def.prompt;
-            if (def.tools.has_value())
-                agent_obj["tools"] = *def.tools;
-            if (def.model.has_value())
-                agent_obj["model"] = *def.model;
-            agents_json[name] = agent_obj;
-        }
-        cmd.push_back("--agents");
-        cmd.push_back(agents_json.dump());
-    }
+    // Agent definitions are sent via initialize control request, not CLI args (v0.1.35)
 
     // Plugins
     // Add --plugin-dir for each plugin (only "local" type supported currently)
@@ -665,28 +648,47 @@ std::vector<std::string> SubprocessCLITransport::build_command()
         }
     }
 
-    // v0.1.6: Max thinking tokens
-    // IMPORTANT: Must be BEFORE --print -- because -- ends option parsing (POSIX)
-    if (options_.max_thinking_tokens)
+    // v0.1.35: ThinkingConfig resolution (takes precedence over max_thinking_tokens)
+    std::optional<int> resolved_max_thinking_tokens = options_.max_thinking_tokens;
+    if (options_.thinking.has_value())
+    {
+        std::visit(
+            [&resolved_max_thinking_tokens](const auto& config)
+            {
+                using T = std::decay_t<decltype(config)>;
+                if constexpr (std::is_same_v<T, ThinkingConfigAdaptive>)
+                {
+                    if (!resolved_max_thinking_tokens.has_value())
+                        resolved_max_thinking_tokens = 32000;
+                }
+                else if constexpr (std::is_same_v<T, ThinkingConfigEnabled>)
+                {
+                    resolved_max_thinking_tokens = config.budget_tokens;
+                }
+                else if constexpr (std::is_same_v<T, ThinkingConfigDisabled>)
+                {
+                    resolved_max_thinking_tokens = 0;
+                }
+            },
+            *options_.thinking);
+    }
+    if (resolved_max_thinking_tokens.has_value())
     {
         cmd.push_back("--max-thinking-tokens");
-        cmd.push_back(std::to_string(*options_.max_thinking_tokens));
+        cmd.push_back(std::to_string(*resolved_max_thinking_tokens));
     }
 
-    // Input mode (must be last - especially --print -- which ends option parsing)
-    if (is_streaming_)
+    // v0.1.35: Effort level
+    if (options_.effort.has_value() && !options_.effort->empty())
     {
-        cmd.push_back("--input-format");
-        cmd.push_back("stream-json");
+        cmd.push_back("--effort");
+        cmd.push_back(*options_.effort);
     }
-    else
-    {
-        // One-shot mode: --print -- <prompt>
-        // The -- signals end of options, so prompt can contain dashes
-        cmd.push_back("--print");
-        cmd.push_back("--");
-        cmd.push_back(prompt_);
-    }
+
+    // Input mode: always use streaming mode (v0.1.35 - agents sent via initialize request)
+    // The prompt for one-shot queries is sent via stdin after connection.
+    cmd.push_back("--input-format");
+    cmd.push_back("stream-json");
 
     return cmd;
 }

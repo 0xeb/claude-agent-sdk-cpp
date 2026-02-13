@@ -147,46 +147,6 @@ void SubprocessTransport::connect()
     // Build command arguments
     auto args = build_command();
 
-    // Windows command line optimization
-    // Check if command line is too long and optimize if needed
-    if (!options_.agents.empty())
-    {
-        // Calculate estimated command line length
-        size_t cmd_length = cli_path.length();
-        for (const auto& arg : args)
-            cmd_length += 1 + arg.length(); // +1 for space
-
-        // If command line exceeds limit, use temp file for --agents JSON
-        if (cmd_length > CMD_LENGTH_LIMIT)
-        {
-            // Find --agents argument
-            auto it = std::find(args.begin(), args.end(), "--agents");
-            if (it != args.end() && std::next(it) != args.end())
-            {
-                auto agents_idx = std::distance(args.begin(), it);
-                std::string agents_json_value = args[agents_idx + 1];
-
-                try
-                {
-                    auto temp_file = write_agents_temp_file(agents_json_value, temp_files_);
-                    // Replace agents JSON with @filepath reference
-                    args[agents_idx + 1] = "@" + temp_file;
-
-                    std::cerr << "Command line length (" << cmd_length << ") exceeds limit ("
-                              << CMD_LENGTH_LIMIT << "). "
-                              << "Using temp file for --agents: " << temp_file << std::endl;
-                }
-                catch (const std::exception& e)
-                {
-                    std::cerr << "Warning: Failed to optimize command line length: " << e.what()
-                              << std::endl;
-                    // Continue with original args (may fail on Windows with very long command
-                    // lines)
-                }
-            }
-        }
-    }
-
     // Configure process options
     subprocess::ProcessOptions proc_opts;
     proc_opts.redirect_stdin = true;
@@ -251,10 +211,8 @@ void SubprocessTransport::connect()
     process_ = std::make_unique<subprocess::Process>();
     process_->spawn(cli_path, args, proc_opts);
 
-    // For one-shot queries (--print mode), close stdin immediately
-    // The prompt is on command line, no need to keep stdin open
-    if (!streaming_mode_ && !one_shot_prompt_.empty())
-        process_->stdin_pipe().close();
+    // v0.1.35: Always use streaming mode - prompt is sent via stdin after initialize
+    // No longer close stdin immediately for one-shot queries
 
     // Start background reader threads
     start_reader();
@@ -400,12 +358,9 @@ std::vector<std::string> SubprocessTransport::build_command() const
     args.push_back("--output-format");
     args.push_back("stream-json");
 
-    // Input format depends on mode
-    if (streaming_mode_)
-    {
-        args.push_back("--input-format");
-        args.push_back("stream-json");
-    }
+    // Input format - always use stream-json (v0.1.35: agents sent via initialize request)
+    args.push_back("--input-format");
+    args.push_back("stream-json");
 
     // Required when using stream-json output format
     args.push_back("--verbose");
@@ -635,28 +590,7 @@ std::vector<std::string> SubprocessTransport::build_command() const
     // Note: Working directory is set via ProcessOptions.working_directory,
     // not via a CLI flag (the --working-directory flag is not supported)
 
-    // Agents support
-    if (!options_.agents.empty())
-    {
-        json agents_json = json::object();
-
-        for (const auto& [name, agent_def] : options_.agents)
-        {
-            json agent_obj = json::object();
-            agent_obj["description"] = agent_def.description;
-            agent_obj["prompt"] = agent_def.prompt;
-
-            if (agent_def.tools.has_value())
-                agent_obj["tools"] = *agent_def.tools;
-            if (agent_def.model.has_value())
-                agent_obj["model"] = *agent_def.model;
-
-            agents_json[name] = agent_obj;
-        }
-
-        args.push_back("--agents");
-        args.push_back(agents_json.dump());
-    }
+    // Agent definitions are sent via initialize control request, not CLI args (v0.1.35)
 
     // Plugins
     // Add --plugin-dir for each plugin (only "local" type supported currently)
@@ -682,11 +616,41 @@ std::vector<std::string> SubprocessTransport::build_command() const
             args.push_back(value);
     }
 
-    // v0.1.6: Max thinking tokens
-    if (options_.max_thinking_tokens)
+    // v0.1.35: ThinkingConfig resolution (takes precedence over max_thinking_tokens)
+    std::optional<int> resolved_max_thinking_tokens = options_.max_thinking_tokens;
+    if (options_.thinking.has_value())
+    {
+        std::visit(
+            [&resolved_max_thinking_tokens](const auto& config)
+            {
+                using T = std::decay_t<decltype(config)>;
+                if constexpr (std::is_same_v<T, ThinkingConfigAdaptive>)
+                {
+                    if (!resolved_max_thinking_tokens.has_value())
+                        resolved_max_thinking_tokens = 32000;
+                }
+                else if constexpr (std::is_same_v<T, ThinkingConfigEnabled>)
+                {
+                    resolved_max_thinking_tokens = config.budget_tokens;
+                }
+                else if constexpr (std::is_same_v<T, ThinkingConfigDisabled>)
+                {
+                    resolved_max_thinking_tokens = 0;
+                }
+            },
+            *options_.thinking);
+    }
+    if (resolved_max_thinking_tokens.has_value())
     {
         args.push_back("--max-thinking-tokens");
-        args.push_back(std::to_string(*options_.max_thinking_tokens));
+        args.push_back(std::to_string(*resolved_max_thinking_tokens));
+    }
+
+    // v0.1.35: Effort level
+    if (options_.effort.has_value() && !options_.effort->empty())
+    {
+        args.push_back("--effort");
+        args.push_back(*options_.effort);
     }
 
     // v0.1.8: Output format / JSON schema
@@ -703,13 +667,7 @@ std::vector<std::string> SubprocessTransport::build_command() const
         }
     }
 
-    // For one-shot mode, add --print and the prompt
-    if (!streaming_mode_ && !one_shot_prompt_.empty())
-    {
-        args.push_back("--print");
-        args.push_back("--");
-        args.push_back(one_shot_prompt_);
-    }
+    // v0.1.35: One-shot prompts are sent via stdin, not via --print CLI arg
 
     return args;
 }

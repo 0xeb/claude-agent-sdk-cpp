@@ -16,6 +16,42 @@ namespace mcp
 {
 
 // ============================================================================
+// MCP Tool Annotations (matches Python SDK v0.1.35)
+// ============================================================================
+
+/// Provides hints about tool behavior to the model/client.
+struct ToolAnnotations
+{
+    std::optional<std::string> title = std::nullopt;
+    std::optional<bool> read_only_hint = std::nullopt;
+    std::optional<bool> destructive_hint = std::nullopt;
+    std::optional<bool> idempotent_hint = std::nullopt;
+    std::optional<bool> open_world_hint = std::nullopt;
+
+    json to_json() const
+    {
+        json out = json::object();
+        if (title.has_value())
+            out["title"] = *title;
+        if (read_only_hint.has_value())
+            out["readOnlyHint"] = *read_only_hint;
+        if (destructive_hint.has_value())
+            out["destructiveHint"] = *destructive_hint;
+        if (idempotent_hint.has_value())
+            out["idempotentHint"] = *idempotent_hint;
+        if (open_world_hint.has_value())
+            out["openWorldHint"] = *open_world_hint;
+        return out;
+    }
+
+    bool has_any() const
+    {
+        return title.has_value() || read_only_hint.has_value() || destructive_hint.has_value() ||
+               idempotent_hint.has_value() || open_world_hint.has_value();
+    }
+};
+
+// ============================================================================
 // Tool Storage - Type-erased tool registry
 // ============================================================================
 
@@ -41,6 +77,13 @@ class ToolStorage
     template <typename ToolWrapper>
     void add(ToolWrapper&& tool)
     {
+        add_with_annotations(std::forward<ToolWrapper>(tool), std::nullopt);
+    }
+
+    /// Add a tool to the storage with optional annotations
+    template <typename ToolWrapper>
+    void add_with_annotations(ToolWrapper&& tool, std::optional<ToolAnnotations> annotations)
+    {
         std::string tool_name = tool.name();
 
         // Check for duplicate names
@@ -52,7 +95,8 @@ class ToolStorage
         auto in_schema = tool.input_schema();
         auto out_schema = tool.output_schema();
         StoredTool stored{tool_name, std::move(desc), std::move(in_schema), std::move(out_schema),
-                          make_handler_from(std::forward<ToolWrapper>(tool))};
+                          make_handler_from(std::forward<ToolWrapper>(tool)),
+                          std::move(annotations)};
 
         tools_[tool_name] = std::move(stored);
     }
@@ -120,6 +164,7 @@ class ToolStorage
         json input_schema;
         json output_schema;
         std::function<json(const json&)> handler;
+        std::optional<ToolAnnotations> annotations = std::nullopt;
     };
 
     std::map<std::string, StoredTool> tools_;
@@ -145,9 +190,12 @@ class ToolStorage
 
         for (const auto& [name, tool] : tools)
         {
-            tools_array.push_back(json{{"name", tool.name},
-                                       {"description", tool.description},
-                                       {"inputSchema", tool.input_schema}});
+            json tool_obj = {{"name", tool.name},
+                             {"description", tool.description},
+                             {"inputSchema", tool.input_schema}};
+            if (tool.annotations.has_value() && tool.annotations->has_any())
+                tool_obj["annotations"] = tool.annotations->to_json();
+            tools_array.push_back(tool_obj);
         }
 
         return json{{"jsonrpc", "2.0"}, {"id", id}, {"result", {{"tools", tools_array}}}};
@@ -239,6 +287,14 @@ class ServerBuilder
     ServerBuilder& add_tool(ToolWrapper&& tool)
     {
         storage_.add(std::forward<ToolWrapper>(tool));
+        return *this;
+    }
+
+    /// Add a tool to the server with annotations
+    template <typename ToolWrapper>
+    ServerBuilder& add_tool(ToolWrapper&& tool, ToolAnnotations annotations)
+    {
+        storage_.add_with_annotations(std::forward<ToolWrapper>(tool), std::move(annotations));
         return *this;
     }
 
