@@ -71,13 +71,8 @@ set_target_properties(claude_sdk PROPERTIES
     FOLDER "Libraries"
 )
 
-# Tests
-if(CLAUDE_BUILD_TESTS)
-    enable_testing()
-    add_subdirectory(tests)
-endif()
-
 # Bring in fastmcpp (optional) if caller provided FASTMCPP_ROOT
+# This must be done before tests subdirectory so fastmcpp_core target is available
 if(FASTMCPP_ROOT)
     if(EXISTS "${FASTMCPP_ROOT}/CMakeLists.txt")
         # Ensure fastmcpp does not register or build its own tests/examples in this inclusion
@@ -87,6 +82,12 @@ if(FASTMCPP_ROOT)
     else()
         message(WARNING "FASTMCPP_ROOT provided but no CMakeLists.txt found at: ${FASTMCPP_ROOT}")
     endif()
+endif()
+
+# Tests
+if(CLAUDE_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
 endif()
 
 # Examples

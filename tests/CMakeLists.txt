@@ -69,13 +69,20 @@ set_tests_properties(test_claude PROPERTIES LABELS "conformance")
 set_tests_properties(test_claude PROPERTIES TIMEOUT 1800)
 
 # Optional: fastmcpp integration tests (requires fastmcpp)
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../../fastmcpp/CMakeLists.txt")
+set(CLAUDE_FASTMCPP_SOURCE_DIR "")
+if(FASTMCPP_ROOT AND EXISTS "${FASTMCPP_ROOT}/CMakeLists.txt")
+    set(CLAUDE_FASTMCPP_SOURCE_DIR "${FASTMCPP_ROOT}")
+elseif(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../../fastmcpp/CMakeLists.txt")
+    set(CLAUDE_FASTMCPP_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../fastmcpp")
+endif()
+
+if(CLAUDE_FASTMCPP_SOURCE_DIR)
     # Ensure fastmcpp does not register its own tests/examples here
     set(FASTMCPP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
     set(FASTMCPP_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
     # Add fastmcpp as subdirectory only to obtain the core target
     if(NOT TARGET fastmcpp_core)
-        add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../fastmcpp ${CMAKE_CURRENT_BINARY_DIR}/fastmcpp EXCLUDE_FROM_ALL)
+        add_subdirectory(${CLAUDE_FASTMCPP_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}/fastmcpp EXCLUDE_FROM_ALL)
     endif()
 
     add_executable(test_fastmcpp_integration
