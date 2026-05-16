@@ -17,6 +17,7 @@ add_executable(test_claude
     test_version.cpp
     unit/test_subprocess.cpp
     unit/test_types.cpp
+    unit/test_types_v0282.cpp
     unit/test_parser.cpp
     unit/test_transport_cli_path.cpp
     unit/test_file_checkpointing.cpp
