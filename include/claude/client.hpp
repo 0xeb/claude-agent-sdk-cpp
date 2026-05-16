@@ -133,6 +133,21 @@ class ClaudeClient
     /// Throws CLIConnectionError if not connected.
     json get_mcp_status();
 
+    /// Get current context window usage. Python parity: get_context_usage()
+    /// (commit ac900bd). Returns categories, totalTokens, percentage, etc.
+    ContextUsageResponse get_context_usage();
+
+    /// Reconnect a disconnected or failed MCP server. Python parity:
+    /// reconnect_mcp_server (commit 28f9b4b).
+    void reconnect_mcp_server(const std::string& server_name);
+
+    /// Enable or disable an MCP server. Python parity: toggle_mcp_server
+    /// (commit 28f9b4b).
+    void toggle_mcp_server(const std::string& server_name, bool enabled);
+
+    /// Stop a running task. Python parity: stop_task (commit 9af27d7).
+    void stop_task(const std::string& task_id);
+
     // Initialization info (parity with Python get_server_info())
     // Returns initialization data (commands, output styles, capabilities) if available.
     std::optional<json> get_server_info() const;

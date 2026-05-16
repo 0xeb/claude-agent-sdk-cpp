@@ -2,6 +2,7 @@
 
 #include "subprocess_env.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <claude/errors.hpp>
 #include <claude/version.hpp>
@@ -9,19 +10,89 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <mutex>
 #include <nlohmann/json.hpp>
 #include <random>
 #include <regex>
+#include <set>
 #include <sstream>
 
 #ifdef _WIN32
 #include <windows.h>
+#else
+#include <csignal>
+#include <sys/types.h>
 #endif
 
 namespace claude
 {
 namespace internal
 {
+
+// Track live CLI subprocess PIDs so we can terminate them when the parent
+// process exits (Python parity: _ACTIVE_CHILDREN + atexit in subprocess_cli.py,
+// commit f2389ec). Stores PIDs rather than process pointers because Process
+// objects may be destroyed concurrently with atexit firing.
+namespace
+{
+std::mutex& active_children_mutex()
+{
+    static std::mutex m;
+    return m;
+}
+
+std::set<long>& active_children_pids()
+{
+    static std::set<long> pids;
+    return pids;
+}
+
+void kill_active_children_atexit()
+{
+    std::lock_guard<std::mutex> lock(active_children_mutex());
+    for (long pid : active_children_pids())
+    {
+        if (pid <= 0)
+            continue;
+#ifdef _WIN32
+        HANDLE h = OpenProcess(PROCESS_TERMINATE, FALSE, static_cast<DWORD>(pid));
+        if (h)
+        {
+            TerminateProcess(h, 1);
+            CloseHandle(h);
+        }
+#else
+        ::kill(static_cast<pid_t>(pid), SIGTERM);
+#endif
+    }
+    active_children_pids().clear();
+}
+
+struct AtexitRegistrar
+{
+    AtexitRegistrar()
+    {
+        std::atexit(&kill_active_children_atexit);
+    }
+};
+static AtexitRegistrar g_atexit_registrar;
+
+void register_active_child(long pid)
+{
+    if (pid <= 0)
+        return;
+    std::lock_guard<std::mutex> lock(active_children_mutex());
+    active_children_pids().insert(pid);
+}
+
+void unregister_active_child(long pid)
+{
+    if (pid <= 0)
+        return;
+    std::lock_guard<std::mutex> lock(active_children_mutex());
+    active_children_pids().erase(pid);
+}
+} // namespace
 
 // Default buffer size for JSON message parsing (1MB)
 constexpr size_t DEFAULT_MAX_BUFFER_SIZE = 1024 * 1024;
@@ -204,12 +275,34 @@ void SubprocessTransport::connect()
     for (const auto& [key, value] : options_.environment)
         proc_opts.environment[key] = value;
 
+    /// Python parity (commit 5839ff9): filter CLAUDECODE from inherited env so
+    /// SDK-spawned subprocesses don't think they're running inside a Claude
+    /// Code parent. In this C++ port, `sanitize_environment=true` (default)
+    /// already filters by allowlist and CLAUDECODE is not in the essentials
+    /// list, so the var is dropped. When `sanitize_environment=false`, the
+    /// user has opted into full env inheritance.
+
+    /// Python parity (commit bbec84d): propagate TRACEPARENT/TRACESTATE from
+    /// caller env so the CLI's spans parent under the caller's trace. C++ has
+    /// no built-in OTEL integration; we forward the env vars if set in the
+    /// parent process and not already in options.environment.
+    for (const char* trace_key : {"TRACEPARENT", "TRACESTATE"})
+    {
+        if (proc_opts.environment.find(trace_key) != proc_opts.environment.end())
+            continue;
+        if (const char* val = std::getenv(trace_key))
+            proc_opts.environment[trace_key] = val;
+    }
+
     // SDK-specific variables (always set)
     apply_sdk_environment(proc_opts, options_, "sdk-py");
 
     // Spawn process
     process_ = std::make_unique<subprocess::Process>();
     process_->spawn(cli_path, args, proc_opts);
+
+    /// Python parity: register child for atexit cleanup (commit f2389ec).
+    register_active_child(static_cast<long>(process_->pid()));
 
     // v0.1.35: Always use streaming mode - prompt is sent via stdin after initialize
     // No longer close stdin immediately for one-shot queries
@@ -300,19 +393,42 @@ void SubprocessTransport::close()
     // Close process
     if (process_)
     {
-        // Wait for process to exit
-        auto exit_code = process_->try_wait();
-        if (!exit_code)
+        long pid = static_cast<long>(process_->pid());
+
+        /// Python parity (commit 40cc6f5): wait for graceful shutdown after
+        /// stdin EOF, then terminate, then kill if still alive. Without this
+        /// grace period the subprocess can be SIGTERM'd before flushing its
+        /// session file, dropping the last assistant message.
+        constexpr auto graceful_timeout = std::chrono::seconds(5);
+        constexpr auto terminate_timeout = std::chrono::seconds(5);
+
+        auto wait_with_timeout = [this](std::chrono::milliseconds timeout) -> bool
         {
-            std::this_thread::sleep_for(std::chrono::milliseconds(500));
-            exit_code = process_->try_wait();
-            if (!exit_code)
+            auto deadline = std::chrono::steady_clock::now() + timeout;
+            while (std::chrono::steady_clock::now() < deadline)
             {
-                process_->terminate();
+                if (process_->try_wait().has_value())
+                    return true;
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            }
+            return false;
+        };
+
+        if (!wait_with_timeout(
+                std::chrono::duration_cast<std::chrono::milliseconds>(graceful_timeout)))
+        {
+            // Graceful timed out -> terminate (SIGTERM / TerminateProcess wrapper)
+            process_->terminate();
+            if (!wait_with_timeout(
+                    std::chrono::duration_cast<std::chrono::milliseconds>(terminate_timeout)))
+            {
+                // SIGTERM blocked -> force kill (SIGKILL / TerminateProcess hard)
+                process_->kill();
                 process_->wait();
             }
         }
 
+        unregister_active_child(pid);
         process_.reset();
     }
 
@@ -366,10 +482,24 @@ std::vector<std::string> SubprocessTransport::build_command() const
     args.push_back("--verbose");
 
     // System prompt handling
-    // - If system_prompt_append is set, use --append-system-prompt (appends to claude_code preset)
+    // - If system_prompt_file is set, use --system-prompt-file (Python commit 139b815)
+    // - Else if system_prompt_preset has "append", use --append-system-prompt
+    // - Else if system_prompt_append is set, use --append-system-prompt
+    //   (appends to claude_code preset)
     // - Otherwise, if system_prompt is set, use --system-prompt (custom prompt)
     // - If neither is set, pass empty string (CLI requirement for proper parsing)
-    if (!options_.system_prompt_append.empty())
+    if (options_.system_prompt_file.has_value() && !options_.system_prompt_file->path.empty())
+    {
+        args.push_back("--system-prompt-file");
+        args.push_back(options_.system_prompt_file->path);
+    }
+    else if (options_.system_prompt_preset.has_value() &&
+             options_.system_prompt_preset->append.has_value())
+    {
+        args.push_back("--append-system-prompt");
+        args.push_back(*options_.system_prompt_preset->append);
+    }
+    else if (!options_.system_prompt_append.empty())
     {
         args.push_back("--append-system-prompt");
         args.push_back(options_.system_prompt_append);
@@ -385,15 +515,54 @@ std::vector<std::string> SubprocessTransport::build_command() const
         args.push_back(""); // Empty string required by CLI
     }
 
-    // Allowed tools (permission rules)
-    if (!options_.allowed_tools.empty())
+    /// Python parity (commit 1c26bd3): skills => allowed_tools "Skill" or
+    /// "Skill(name)" entries; setting_sources defaults to ["user","project"]
+    /// when unset so installed skills are discovered. We compute effective
+    /// allowed_tools here (does not mutate options_).
+    std::vector<std::string> effective_allowed_tools = options_.allowed_tools;
+    bool skills_implied_setting_sources = false;
+    if (options_.skills.has_value())
+    {
+        std::visit(
+            [&](const auto& sk)
+            {
+                using T = std::decay_t<decltype(sk)>;
+                if constexpr (std::is_same_v<T, std::string>)
+                {
+                    if (sk == "all")
+                    {
+                        if (std::find(effective_allowed_tools.begin(),
+                                      effective_allowed_tools.end(),
+                                      "Skill") == effective_allowed_tools.end())
+                            effective_allowed_tools.push_back("Skill");
+                    }
+                }
+                else if constexpr (std::is_same_v<T, std::vector<std::string>>)
+                {
+                    for (const auto& name : sk)
+                    {
+                        std::string pattern = "Skill(" + name + ")";
+                        if (std::find(effective_allowed_tools.begin(),
+                                      effective_allowed_tools.end(),
+                                      pattern) == effective_allowed_tools.end())
+                            effective_allowed_tools.push_back(pattern);
+                    }
+                }
+            },
+            *options_.skills);
+        if (options_.setting_sources.empty())
+            skills_implied_setting_sources = true;
+    }
+
+    // Allowed tools (permission rules) — use effective list (includes skills injections)
+    if (!effective_allowed_tools.empty())
     {
         std::string tools_str;
-        for (size_t i = 0; i < options_.allowed_tools.size(); ++i)
+        for (size_t i = 0; i < effective_allowed_tools.size(); ++i)
         {
             if (i > 0)
                 tools_str += ",";
-            tools_str += options_.allowed_tools[i];
+            tools_str += effective_allowed_tools[i];
         }
         args.push_back("--allowedTools");
         args.push_back(tools_str);
@@ -508,6 +677,39 @@ std::vector<std::string> SubprocessTransport::build_command() const
         args.push_back(options_.resume);
     }
 
+    if (options_.session_id.has_value() && !options_.session_id->empty())
+    {
+        /// Python parity (commit 5656d20): --session-id flag.
+        args.push_back("--session-id");
+        args.push_back(*options_.session_id);
+    }
+
+    if (options_.task_budget.has_value())
+    {
+        /// Python parity (commit 2e60cec): --task-budget flag.
+        args.push_back("--task-budget");
+        args.push_back(std::to_string(options_.task_budget->total));
+    }
+
+    if (options_.strict_mcp_config)
+    {
+        /// Python parity (commit 32bcc4e): --strict-mcp-config flag.
+        args.push_back("--strict-mcp-config");
+    }
+
+    if (options_.include_hook_events)
+    {
+        /// Python parity (commit c1182a4): --include-hook-events flag.
+        args.push_back("--include-hook-events");
+    }
+
+    if (options_.session_store)
+    {
+        /// Python parity (commit 6e3d54f): --session-mirror enables CLI-side
+        /// transcript mirroring when a SessionStore is configured.
+        args.push_back("--session-mirror");
+    }
+
     // Settings file
     if (!options_.settings.empty())
     {
@@ -572,18 +774,22 @@ std::vector<std::string> SubprocessTransport::build_command() const
     if (options_.fork_session)
         args.push_back("--fork-session");
 
-    // Setting sources (always pass, CLI requires it for proper parsing)
+    // Setting sources. Python parity: --setting-sources only emitted when
+    // explicitly set; empty CSV disables filesystem settings. C++ conflates
+    // "unset" with "empty list" (existing behavior) — both yield --setting-
+    // sources= which the CLI treats as "no settings". When skills imply
+    // defaults, we substitute ["user","project"] for an empty list.
+    std::vector<std::string> effective_setting_sources = options_.setting_sources;
+    if (skills_implied_setting_sources && effective_setting_sources.empty())
+        effective_setting_sources = {"user", "project"};
+
     std::string sources_str;
-    if (!options_.setting_sources.empty())
+    for (size_t i = 0; i < effective_setting_sources.size(); ++i)
     {
-        for (size_t i = 0; i < options_.setting_sources.size(); ++i)
-        {
-            if (i > 0)
-                sources_str += ",";
-            sources_str += options_.setting_sources[i];
-        }
+        if (i > 0)
+            sources_str += ",";
+        sources_str += effective_setting_sources[i];
     }
-    // else: sources_str remains empty string
     args.push_back("--setting-sources");
     args.push_back(sources_str); // May be empty string, which CLI expects
 
@@ -616,34 +822,46 @@ std::vector<std::string> SubprocessTransport::build_command() const
             args.push_back(value);
     }
 
-    // v0.1.35: ThinkingConfig resolution (takes precedence over max_thinking_tokens)
-    std::optional<int> resolved_max_thinking_tokens = options_.max_thinking_tokens;
+    // v0.1.35: Thinking config resolution. Python commit 6617b9e: --thinking
+    // for adaptive/disabled (not budget-tokens). Commit 32f09c1: --thinking-display.
     if (options_.thinking.has_value())
     {
         std::visit(
-            [&resolved_max_thinking_tokens](const auto& config)
+            [&args](const auto& config)
             {
                 using T = std::decay_t<decltype(config)>;
                 if constexpr (std::is_same_v<T, ThinkingConfigAdaptive>)
                 {
-                    if (!resolved_max_thinking_tokens.has_value())
-                        resolved_max_thinking_tokens = 32000;
+                    args.push_back("--thinking");
+                    args.push_back("adaptive");
+                    if (config.display.has_value())
+                    {
+                        args.push_back("--thinking-display");
+                        args.push_back(*config.display);
+                    }
                 }
                 else if constexpr (std::is_same_v<T, ThinkingConfigEnabled>)
                 {
-                    resolved_max_thinking_tokens = config.budget_tokens;
+                    args.push_back("--max-thinking-tokens");
+                    args.push_back(std::to_string(config.budget_tokens));
+                    if (config.display.has_value())
+                    {
+                        args.push_back("--thinking-display");
+                        args.push_back(*config.display);
+                    }
                 }
                 else if constexpr (std::is_same_v<T, ThinkingConfigDisabled>)
                 {
-                    resolved_max_thinking_tokens = 0;
+                    args.push_back("--thinking");
+                    args.push_back("disabled");
                 }
             },
             *options_.thinking);
     }
-    if (resolved_max_thinking_tokens.has_value())
+    else if (options_.max_thinking_tokens.has_value())
     {
         args.push_back("--max-thinking-tokens");
-        args.push_back(std::to_string(*resolved_max_thinking_tokens));
+        args.push_back(std::to_string(*options_.max_thinking_tokens));
     }
 
     // v0.1.35: Effort level

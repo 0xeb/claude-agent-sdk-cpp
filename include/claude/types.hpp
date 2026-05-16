@@ -1331,6 +1331,8 @@ constexpr const char* Max = "max";
 struct ThinkingConfigAdaptive
 {
     std::string type = "adaptive";
+    /// Optional display mode forwarded via --thinking-display (Python commit 32f09c1).
+    std::optional<std::string> display = std::nullopt;
 };
 
 /// ThinkingConfig variant: enabled with explicit budget
@@ -1338,6 +1340,8 @@ struct ThinkingConfigEnabled
 {
     std::string type = "enabled";
     int budget_tokens;
+    /// Optional display mode forwarded via --thinking-display (Python commit 32f09c1).
+    std::optional<std::string> display = std::nullopt;
     explicit ThinkingConfigEnabled(int budget) : budget_tokens(budget) {}
 };
 

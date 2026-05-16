@@ -868,6 +868,52 @@ json ClaudeClient::get_mcp_status()
     return impl_->control_protocol_->send_request(write_func, "mcp_status", request_data);
 }
 
+/// Python parity: ClaudeSDKClient.get_context_usage (commit ac900bd).
+ContextUsageResponse ClaudeClient::get_context_usage()
+{
+    if (!is_connected())
+        throw CLIConnectionError("Not connected to Claude CLI");
+
+    auto write_func = [this](const std::string& data) { impl_->transport_->write(data); };
+    json request_data = json::object();
+    json response = impl_->control_protocol_->send_request(write_func, "get_context_usage",
+                                                            request_data);
+    return ContextUsageResponse::from_json(response);
+}
+
+/// Python parity: ClaudeSDKClient.reconnect_mcp_server (commit 28f9b4b).
+void ClaudeClient::reconnect_mcp_server(const std::string& server_name)
+{
+    if (!is_connected())
+        throw CLIConnectionError("Not connected to Claude CLI");
+
+    auto write_func = [this](const std::string& data) { impl_->transport_->write(data); };
+    json request_data = {{"serverName", server_name}};
+    impl_->control_protocol_->send_request(write_func, "mcp_reconnect", request_data);
+}
+
+/// Python parity: ClaudeSDKClient.toggle_mcp_server (commit 28f9b4b).
+void ClaudeClient::toggle_mcp_server(const std::string& server_name, bool enabled)
+{
+    if (!is_connected())
+        throw CLIConnectionError("Not connected to Claude CLI");
+
+    auto write_func = [this](const std::string& data) { impl_->transport_->write(data); };
+    json request_data = {{"serverName", server_name}, {"enabled", enabled}};
+    impl_->control_protocol_->send_request(write_func, "mcp_toggle", request_data);
+}
+
+/// Python parity: ClaudeSDKClient.stop_task (commit 9af27d7).
+void ClaudeClient::stop_task(const std::string& task_id)
+{
+    if (!is_connected())
+        throw CLIConnectionError("Not connected to Claude CLI");
+
+    auto write_func = [this](const std::string& data) { impl_->transport_->write(data); };
+    json request_data = {{"task_id", task_id}};
+    impl_->control_protocol_->send_request(write_func, "stop_task", request_data);
+}
+
 std::optional<json> ClaudeClient::get_server_info() const
 {
     if (!impl_ || !impl_->connected_ || !impl_->initialized_)

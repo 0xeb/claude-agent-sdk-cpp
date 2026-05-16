@@ -29,6 +29,10 @@ add_executable(test_claude
     unit/test_temp_file_security.cpp
     unit/test_thinking_config.cpp
     unit/test_sessions.cpp
+    unit/test_message_parser_v0282.cpp
+    unit/test_subprocess_cli_v0282.cpp
+    unit/test_client_v0282.cpp
+    unit/test_query_v0282.cpp
     integration/sdk_mcp_integration.cpp
     integration/sdk_mcp_integration_errors.cpp
     integration/test_query.cpp

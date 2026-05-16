@@ -49,6 +49,7 @@ class MessageParser
     static ResultMessage parse_result_message(const claude::json& j);
     static SystemMessage parse_system_message(const claude::json& j);
     static StreamEvent parse_stream_event(const claude::json& j);
+    static RateLimitEvent parse_rate_limit_event(const claude::json& j);
     static claude::protocol::ControlRequest parse_control_request(const claude::json& j);
     static claude::protocol::ControlResponse parse_control_response(const claude::json& j);
 };
