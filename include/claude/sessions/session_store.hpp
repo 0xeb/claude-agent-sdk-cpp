@@ -69,18 +69,40 @@ struct SessionMessage
     std::optional<std::string> parent_tool_use_id = std::nullopt;
 };
 
+/// Capability bitmask describing which optional SessionStore methods an
+/// adapter implements. Mirrors the Python ``_store_implements`` runtime check
+/// — in C++ we expose it as an explicit ``capabilities()`` query so call sites
+/// can probe without try/catch on every dispatch.
+namespace SessionStoreCapability
+{
+constexpr unsigned None = 0;
+constexpr unsigned ListSessions = 1u << 0;
+constexpr unsigned ListSessionSummaries = 1u << 1;
+constexpr unsigned DeleteSession = 1u << 2;
+constexpr unsigned ListSubkeys = 1u << 3;
+constexpr unsigned All = ListSessions | ListSessionSummaries | DeleteSession | ListSubkeys;
+} // namespace SessionStoreCapability
+
 /// Abstract base class for session-store adapters. Mirrors the Python
 /// SessionStore Protocol (commit 6e3d54f). Only append() and load() are
 /// required; the remaining methods throw std::logic_error by default to
-/// signal "not implemented" — call sites may probe these via dynamic_cast or
-/// equivalent before invoking.
+/// signal "not implemented" — capability() reflects which optional methods the
+/// concrete adapter actually overrides.
 ///
-/// NOTE: Phase 2A defines this interface only. InMemorySessionStore and the
-/// transcript mirror plumbing are landed in Phase 3A.
+/// Implementations must be safe to call concurrently from multiple threads.
+/// Adapters should treat entries as opaque pass-through blobs; dedupe by
+/// ``entry["uuid"]`` when present to make retried mirror batches idempotent.
 class SessionStore
 {
   public:
     virtual ~SessionStore() = default;
+
+    /// Bitwise-OR of SessionStoreCapability flags. Default: none (only the
+    /// required append()/load() pair). Concrete adapters override.
+    virtual unsigned capabilities() const noexcept
+    {
+        return SessionStoreCapability::None;
+    }
 
     /// Mirror a batch of transcript entries (called AFTER local write succeeds).
     virtual void append(const SessionKey& key,

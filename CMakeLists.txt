@@ -48,6 +48,18 @@ add_library(claude_sdk
     src/internal/transport/subprocess_transport.cpp
     # Extensions (C++ conveniences)
     src/ext/session_storage.cpp
+    # Sessions subsystem (Phase 3A — Python parity)
+    src/sessions/in_memory_session_store.cpp
+    src/sessions/file_session_store.cpp
+    src/sessions/session_summary.cpp
+    src/sessions/session_store_validation.cpp
+    src/sessions/session_mutations.cpp
+    src/sessions/session_import.cpp
+    src/sessions/session_resume.cpp
+    src/sessions/transcript_mirror_batcher.cpp
+    src/sessions/free_functions.cpp
+    # Conformance harness (public, for adapter authors)
+    src/testing/session_store_conformance.cpp
     ${CLAUDE_CONFIG_FILES}
 )
 
