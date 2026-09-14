@@ -1047,6 +1047,169 @@ constexpr const char* Failed = "failed";
 constexpr const char* Stopped = "stopped";
 } // namespace TaskNotificationStatus
 
+// ============================================================================
+// Python SDK v0.2.152 additions
+// ============================================================================
+
+/// Possible status values for a task_updated message.
+///
+/// Note this vocabulary differs from TaskNotificationStatus: a killed task is
+/// reported here as "killed", while task_notification reports the CLI's mapped
+/// "stopped". See is_terminal_task_status().
+namespace TaskUpdatedStatus
+{
+constexpr const char* Pending = "pending";
+constexpr const char* Running = "running";
+constexpr const char* Paused = "paused";
+constexpr const char* Completed = "completed";
+constexpr const char* Failed = "failed";
+constexpr const char* Killed = "killed";
+} // namespace TaskUpdatedStatus
+
+/// Statuses meaning a task has finished and should be cleared from any
+/// "active task" tracking.
+///
+/// **Deliberately spans both vocabularies.** A task's terminal state can arrive
+/// as a TaskNotificationMessage ("stopped") or as a TaskUpdatedMessage
+/// ("killed") -- and a task stopped via TaskStop reports only the latter, with
+/// the notification sometimes suppressed. Checking one vocabulary leaves such a
+/// task tracked as active forever.
+inline bool is_terminal_task_status(std::string_view status) noexcept
+{
+    return status == "completed" || status == "failed" || status == "stopped" ||
+           status == "killed";
+}
+
+/// Origin subkinds for a task_notification message.
+namespace TaskNotificationOriginSubkind
+{
+constexpr const char* ScheduledTrigger = "scheduled-trigger";
+constexpr const char* PeerSendMessage = "peer-send-message";
+} // namespace TaskNotificationOriginSubkind
+
+/// Known values of MessageOrigin::kind.
+///
+/// **Open set.** Newer CLI versions may emit kinds not listed here; treat
+/// anything unrecognized as "not human" rather than rejecting it. That is why
+/// MessageOrigin::kind is a std::string and not an enum.
+namespace MessageOriginKind
+{
+constexpr const char* Human = "human";
+constexpr const char* Channel = "channel";
+constexpr const char* Peer = "peer";
+constexpr const char* TaskNotification = "task-notification";
+constexpr const char* Coordinator = "coordinator";
+constexpr const char* Unclassified = "unclassified";
+constexpr const char* Observer = "observer";
+constexpr const char* AutoContinuation = "auto-continuation";
+constexpr const char* ObserverActivity = "observer-activity";
+} // namespace MessageOriginKind
+
+/// Where a message came from. Fields other than `kind` are populated only for
+/// the kinds that define them.
+struct MessageOrigin
+{
+    /// Discriminator. See MessageOriginKind; may hold an unrecognized value.
+    std::string kind;
+    /// kind == "channel": name of the MCP server the message arrived on.
+    std::optional<std::string> server = std::nullopt;
+    /// kind == "peer"/"observer": sender address. Sender-asserted -- use for
+    /// reply routing or display, never as proof of identity.
+    std::optional<std::string> from = std::nullopt;
+    /// kind == "peer": sender display name, already normalized by the CLI.
+    std::optional<std::string> name = std::nullopt;
+    /// Raw payload, so kind-specific fields not modelled here stay reachable.
+    json raw_json;
+
+    /// True only for an explicitly human-originated message. An unrecognized
+    /// kind is not human, which is the upstream-documented default.
+    bool is_human() const noexcept { return kind == MessageOriginKind::Human; }
+};
+
+/// Per-model token usage and cost breakdown.
+///
+/// **Keys are camelCase on the wire**, matching the TypeScript SDK: the value
+/// is passed through verbatim from the CLI's `modelUsage` field rather than
+/// being renamed to this SDK's usual snake_case.
+struct ModelUsage
+{
+    int input_tokens = 0;
+    int output_tokens = 0;
+    int cache_read_input_tokens = 0;
+    int cache_creation_input_tokens = 0;
+    int web_search_requests = 0;
+    double cost_usd = 0.0;
+    int context_window = 0;
+    int max_output_tokens = 0;
+};
+
+inline void to_json(json& j, const ModelUsage& u)
+{
+    j = json{
+        {"inputTokens", u.input_tokens},
+        {"outputTokens", u.output_tokens},
+        {"cacheReadInputTokens", u.cache_read_input_tokens},
+        {"cacheCreationInputTokens", u.cache_creation_input_tokens},
+        {"webSearchRequests", u.web_search_requests},
+        {"costUSD", u.cost_usd},
+        {"contextWindow", u.context_window},
+        {"maxOutputTokens", u.max_output_tokens},
+    };
+}
+
+inline void from_json(const json& j, ModelUsage& u)
+{
+    const auto get_int = [&j](const char* key, int& out)
+    {
+        if (j.contains(key) && j.at(key).is_number())
+            out = j.at(key).get<int>();
+    };
+    get_int("inputTokens", u.input_tokens);
+    get_int("outputTokens", u.output_tokens);
+    get_int("cacheReadInputTokens", u.cache_read_input_tokens);
+    get_int("cacheCreationInputTokens", u.cache_creation_input_tokens);
+    get_int("webSearchRequests", u.web_search_requests);
+    get_int("contextWindow", u.context_window);
+    get_int("maxOutputTokens", u.max_output_tokens);
+    if (j.contains("costUSD") && j.at("costUSD").is_number())
+        u.cost_usd = j.at("costUSD").get<double>();
+}
+
+/// Emitted when the session's conversation is replaced without ending the
+/// connection -- e.g. after `/clear`.
+///
+/// A reset clears the transcript *and* zeroes the running totals reported on
+/// subsequent ResultMessages. If you accumulate those totals across a
+/// long-lived session, snapshot them when this arrives.
+struct ConversationResetMessage
+{
+    std::string type = "conversation_reset";
+    /// Identifier for the fresh conversation. **Not** the session_id of
+    /// subsequent messages -- read that from the next message.
+    std::string new_conversation_id;
+    std::string uuid;
+    /// The outgoing session; messages after the reset carry a new session_id.
+    std::string session_id;
+    json raw_json;
+};
+
+/// System message emitted when a background task's state changes.
+///
+/// `patch` carries only the changed fields. When `status` is terminal (see
+/// is_terminal_task_status) the task has finished -- and for a task stopped via
+/// TaskStop this message may be the *only* notice, with no accompanying
+/// TaskNotificationMessage.
+struct TaskUpdatedMessage : SystemMessage
+{
+    std::string task_id;
+    /// Changed fields only, as emitted by the CLI.
+    json patch;
+    /// One of TaskUpdatedStatus::*, when the patch changed it.
+    std::optional<std::string> status = std::nullopt;
+    std::optional<std::string> session_id = std::nullopt;
+    std::optional<std::string> uuid = std::nullopt;
+};
+
 /// System message emitted when a task starts. Subclass of SystemMessage:
 /// existing isinstance/holds_alternative checks against SystemMessage still
 /// match because the base SystemMessage carries the raw payload. In C++ we
