@@ -62,22 +62,20 @@ class ProcessError : public ClaudeError
 class ResultError : public ProcessError
 {
   public:
-    ResultError(const std::string& message,
-                int exit_code,
-                std::string subtype,
-                std::optional<std::string> terminal_reason,
-                std::vector<std::string> errors)
-        : ProcessError(message, exit_code),
-          subtype_(std::move(subtype)),
-          terminal_reason_(std::move(terminal_reason)),
-          errors_(std::move(errors))
+    ResultError(const std::string& message, int exit_code, std::string subtype,
+                std::optional<std::string> terminal_reason, std::vector<std::string> errors)
+        : ProcessError(message, exit_code), subtype_(std::move(subtype)),
+          terminal_reason_(std::move(terminal_reason)), errors_(std::move(errors))
     {
     }
 
     /// Result subtype: "error_max_turns", "error_during_execution", ... or
     /// "success" when the agent loop completed but the last turn was an API
     /// error.
-    const std::string& subtype() const noexcept { return subtype_; }
+    const std::string& subtype() const noexcept
+    {
+        return subtype_;
+    }
 
     /// Why the run terminated, when the CLI reported it (e.g. "api_error").
     const std::optional<std::string>& terminal_reason() const noexcept
@@ -87,7 +85,10 @@ class ResultError : public ProcessError
 
     /// Error strings from the result frame, normalized: blanks and non-strings
     /// dropped so these always agree with the exception message.
-    const std::vector<std::string>& errors() const noexcept { return errors_; }
+    const std::vector<std::string>& errors() const noexcept
+    {
+        return errors_;
+    }
 
   private:
     std::string subtype_;

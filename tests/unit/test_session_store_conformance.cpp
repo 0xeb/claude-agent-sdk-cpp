@@ -9,14 +9,12 @@
 // Each contract gets a freshly-built store via the factory, so contracts cannot
 // leak state into one another.
 
+#include <atomic>
 #include <claude/sessions/file_session_store.hpp>
 #include <claude/sessions/in_memory_session_store.hpp>
 #include <claude/testing/session_store_conformance.hpp>
-
-#include <gtest/gtest.h>
-
-#include <atomic>
 #include <filesystem>
+#include <gtest/gtest.h>
 #include <memory>
 #include <string>
 

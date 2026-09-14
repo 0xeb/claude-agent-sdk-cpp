@@ -1076,8 +1076,7 @@ constexpr const char* Killed = "killed";
 /// task tracked as active forever.
 inline bool is_terminal_task_status(std::string_view status) noexcept
 {
-    return status == "completed" || status == "failed" || status == "stopped" ||
-           status == "killed";
+    return status == "completed" || status == "failed" || status == "stopped" || status == "killed";
 }
 
 /// Origin subkinds for a task_notification message.
@@ -1123,7 +1122,10 @@ struct MessageOrigin
 
     /// True only for an explicitly human-originated message. An unrecognized
     /// kind is not human, which is the upstream-documented default.
-    bool is_human() const noexcept { return kind == MessageOriginKind::Human; }
+    bool is_human() const noexcept
+    {
+        return kind == MessageOriginKind::Human;
+    }
 };
 
 /// Per-model token usage and cost breakdown.
