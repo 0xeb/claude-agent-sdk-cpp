@@ -1,5 +1,4 @@
 #include <claude/sessions/session_store_validation.hpp>
-
 #include <stdexcept>
 
 namespace claude::sessions

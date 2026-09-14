@@ -12,7 +12,6 @@
 #include <claude/sessions/in_memory_session_store.hpp>
 #include <claude/sessions/session_mutations.hpp>
 #include <claude/sessions/session_resume.hpp>
-
 #include <filesystem>
 #include <iostream>
 #include <memory>
@@ -24,12 +23,11 @@ namespace
 claude::json user_entry(const std::string& uuid, const std::string& text,
                         const std::string& session_id)
 {
-    return claude::json{
-        {"type", "user"},
-        {"uuid", uuid},
-        {"sessionId", session_id},
-        {"timestamp", "2024-01-01T00:00:00.000Z"},
-        {"message", {{"role", "user"}, {"content", text}}}};
+    return claude::json{{"type", "user"},
+                        {"uuid", uuid},
+                        {"sessionId", session_id},
+                        {"timestamp", "2024-01-01T00:00:00.000Z"},
+                        {"message", {{"role", "user"}, {"content", text}}}};
 }
 
 claude::json assistant_entry(const std::string& uuid, const std::string& parent,
@@ -56,13 +54,13 @@ int main()
     const std::string session_id = "11111111-2222-4333-8444-555555555555";
     claude::SessionKey key{project_key, session_id, std::nullopt};
 
-    store->append(key, {
-                           user_entry("aaaaaaaa-0000-4000-8000-000000000001",
-                                      "What's the capital of France?", session_id),
-                           assistant_entry("bbbbbbbb-0000-4000-8000-000000000002",
-                                           "aaaaaaaa-0000-4000-8000-000000000001",
-                                           "Paris.", session_id),
-                       });
+    store->append(key,
+                  {
+                      user_entry("aaaaaaaa-0000-4000-8000-000000000001",
+                                 "What's the capital of France?", session_id),
+                      assistant_entry("bbbbbbbb-0000-4000-8000-000000000002",
+                                      "aaaaaaaa-0000-4000-8000-000000000001", "Paris.", session_id),
+                  });
     std::cout << "[append] stored " << store->load(key)->size() << " entries\n";
 
     // 1) Materialize the session into a temp CLAUDE_CONFIG_DIR so the CLI

@@ -1,7 +1,6 @@
-#include <claude/sessions/session_summary.hpp>
-
 #include <algorithm>
 #include <chrono>
+#include <claude/sessions/session_summary.hpp>
 #include <cstdint>
 #include <ctime>
 #include <iomanip>
@@ -37,11 +36,8 @@ const std::regex& command_name_re()
 const std::vector<std::pair<std::string, std::string>>& last_wins_fields()
 {
     static const std::vector<std::pair<std::string, std::string>> v = {
-        {"customTitle", "custom_title"},
-        {"aiTitle", "ai_title"},
-        {"lastPrompt", "last_prompt"},
-        {"summary", "summary_hint"},
-        {"gitBranch", "git_branch"},
+        {"customTitle", "custom_title"}, {"aiTitle", "ai_title"},     {"lastPrompt", "last_prompt"},
+        {"summary", "summary_hint"},     {"gitBranch", "git_branch"},
     };
     return v;
 }
@@ -74,9 +70,9 @@ std::string replace_newlines(std::string s)
     return s;
 }
 
-// Truncate to 200 chars with horizontal ellipsis (matches Python "result[:200].rstrip() + '\u2026'").
-// "Chars" here means bytes (the Python code is similarly byte-based for ASCII-heavy prompts;
-// UTF-8 truncation may split a multibyte sequence — caller treats as best-effort display).
+// Truncate to 200 chars with horizontal ellipsis (matches Python "result[:200].rstrip() +
+// '\u2026'"). "Chars" here means bytes (the Python code is similarly byte-based for ASCII-heavy
+// prompts; UTF-8 truncation may split a multibyte sequence — caller treats as best-effort display).
 std::string maybe_truncate_200(const std::string& s)
 {
     if (s.size() <= 200)
@@ -122,7 +118,8 @@ std::vector<std::string> entry_text_blocks(const json& entry)
 // Python: session_summary.py:_fold_first_prompt (line 71).
 void fold_first_prompt(json& data, const json& entry)
 {
-    auto bool_field = [&](const json& obj, const char* key) {
+    auto bool_field = [&](const json& obj, const char* key)
+    {
         auto it = obj.find(key);
         return it != obj.end() && it->is_boolean() && it->get<bool>();
     };
@@ -231,13 +228,9 @@ std::optional<int64_t> iso_to_epoch_ms(const std::string& ts)
             int sign = ts[pos] == '+' ? 1 : -1;
             int th = 0, tm2 = 0;
             if (std::sscanf(s + pos + 1, "%2d:%2d", &th, &tm2) == 2)
-            {
                 tz_offset_minutes = sign * (th * 60 + tm2);
-            }
             else
-            {
                 return std::nullopt;
-            }
         }
     }
     tm.tm_year = year - 1900;
@@ -360,8 +353,7 @@ SessionSummaryEntry fold_session_summary(const std::optional<SessionSummaryEntry
         if (!data.contains("is_sidechain"))
         {
             auto sit = entry.find("isSidechain");
-            data["is_sidechain"] =
-                sit != entry.end() && sit->is_boolean() && sit->get<bool>();
+            data["is_sidechain"] = sit != entry.end() && sit->is_boolean() && sit->get<bool>();
         }
         if (!data.contains("created_at") && ms_opt.has_value())
             data["created_at"] = *ms_opt;
@@ -386,15 +378,10 @@ SessionSummaryEntry fold_session_summary(const std::optional<SessionSummaryEntry
         if (tit != entry.end() && tit->is_string() && tit->get<std::string>() == "tag")
         {
             auto tag_it = entry.find("tag");
-            if (tag_it != entry.end() && tag_it->is_string() &&
-                !tag_it->get<std::string>().empty())
-            {
+            if (tag_it != entry.end() && tag_it->is_string() && !tag_it->get<std::string>().empty())
                 data["tag"] = tag_it->get<std::string>();
-            }
             else
-            {
                 data.erase("tag");
-            }
         }
     }
 
@@ -412,7 +399,8 @@ summary_entry_to_sdk_info(const SessionSummaryEntry& entry,
     if (data.value("is_sidechain", false))
         return std::nullopt;
 
-    auto get_str = [&](const char* k) -> std::optional<std::string> {
+    auto get_str = [&](const char* k) -> std::optional<std::string>
+    {
         auto it = data.find(k);
         if (it != data.end() && it->is_string() && !it->get<std::string>().empty())
             return it->get<std::string>();

@@ -8,7 +8,6 @@
 // after printing a usage hint so the binary always builds.
 
 #include <claude/claude.hpp>
-
 #include <iostream>
 
 int main()

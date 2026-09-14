@@ -22,7 +22,8 @@ void tools_array_example()
 
     try
     {
-        auto result = claude::query("What tools do you have available? Just list them briefly.", opts);
+        auto result =
+            claude::query("What tools do you have available? Just list them briefly.", opts);
 
         for (const auto& msg : result)
         {
@@ -76,7 +77,8 @@ void tools_empty_array_example()
 
     try
     {
-        auto result = claude::query("What tools do you have available? Just list them briefly.", opts);
+        auto result =
+            claude::query("What tools do you have available? Just list them briefly.", opts);
 
         for (const auto& msg : result)
         {
@@ -128,7 +130,8 @@ void tools_preset_example()
 
     try
     {
-        auto result = claude::query("What tools do you have available? Just list them briefly.", opts);
+        auto result =
+            claude::query("What tools do you have available? Just list them briefly.", opts);
 
         for (const auto& msg : result)
         {

@@ -1,7 +1,6 @@
+#include <chrono>
 #include <claude/sessions/file_session_store.hpp>
 #include <claude/sessions/session_summary.hpp>
-
-#include <chrono>
 #include <fstream>
 #include <sstream>
 #include <system_error>
@@ -23,9 +22,7 @@ int64_t file_mtime_ms(const fs::path& p)
     // but works on the major three).
     auto sctp = std::chrono::time_point_cast<std::chrono::system_clock::duration>(
         ft - decltype(ft)::clock::now() + std::chrono::system_clock::now());
-    return std::chrono::duration_cast<std::chrono::milliseconds>(
-               sctp.time_since_epoch())
-        .count();
+    return std::chrono::duration_cast<std::chrono::milliseconds>(sctp.time_since_epoch()).count();
 }
 } // namespace
 
@@ -65,8 +62,7 @@ fs::path FileSessionStore::summary_path_for(const std::string& project_key,
     return root_ / project_key / (session_id + ".summary.json");
 }
 
-void FileSessionStore::append(const SessionKey& key,
-                              const std::vector<SessionStoreEntry>& entries)
+void FileSessionStore::append(const SessionKey& key, const std::vector<SessionStoreEntry>& entries)
 {
     std::lock_guard<std::mutex> lk(mu_);
     if (entries.empty())
@@ -87,10 +83,8 @@ void FileSessionStore::append(const SessionKey& key,
             json reordered = json::object();
             reordered["type"] = e.at("type");
             for (auto it = e.begin(); it != e.end(); ++it)
-            {
                 if (it.key() != "type")
                     reordered[it.key()] = it.value();
-            }
             f << reordered.dump() << '\n';
         }
         else
@@ -138,8 +132,7 @@ void FileSessionStore::append(const SessionKey& key,
     }
 }
 
-std::optional<std::vector<SessionStoreEntry>>
-FileSessionStore::load(const SessionKey& key)
+std::optional<std::vector<SessionStoreEntry>> FileSessionStore::load(const SessionKey& key)
 {
     std::lock_guard<std::mutex> lk(mu_);
     fs::path path = file_path_for(key);
@@ -168,8 +161,7 @@ FileSessionStore::load(const SessionKey& key)
     return out;
 }
 
-std::vector<SessionStoreListEntry>
-FileSessionStore::list_sessions(const std::string& project_key)
+std::vector<SessionStoreListEntry> FileSessionStore::list_sessions(const std::string& project_key)
 {
     std::lock_guard<std::mutex> lk(mu_);
     std::vector<SessionStoreListEntry> out;
@@ -222,8 +214,7 @@ FileSessionStore::list_session_summaries(const std::string& project_key)
             json j;
             sf >> j;
             SessionSummaryEntry e;
-            e.session_id = j.value("session_id",
-                                   name.substr(0, name.size() - suffix.size()));
+            e.session_id = j.value("session_id", name.substr(0, name.size() - suffix.size()));
             e.mtime = j.value("mtime", int64_t{0});
             e.data = j.value("data", json::object());
             out.push_back(std::move(e));
@@ -250,8 +241,7 @@ void FileSessionStore::delete_session(const SessionKey& key)
     }
 }
 
-std::vector<std::string>
-FileSessionStore::list_subkeys(const SessionListSubkeysKey& key)
+std::vector<std::string> FileSessionStore::list_subkeys(const SessionListSubkeysKey& key)
 {
     std::lock_guard<std::mutex> lk(mu_);
     std::vector<std::string> out;

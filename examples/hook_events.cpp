@@ -7,7 +7,6 @@
 // exits 0 so it remains buildable everywhere.
 
 #include <claude/claude.hpp>
-
 #include <iostream>
 #include <variant>
 
@@ -40,8 +39,7 @@ int main()
             else if (claude::is_assistant_message(msg))
             {
                 const auto& assistant = std::get<claude::AssistantMessage>(msg);
-                std::cout << "[assistant] "
-                          << claude::get_text_content(assistant.content) << "\n";
+                std::cout << "[assistant] " << claude::get_text_content(assistant.content) << "\n";
             }
         }
         std::cout << "\nTotal hook events seen: " << hook_event_count << "\n";

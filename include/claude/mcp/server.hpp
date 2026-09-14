@@ -94,7 +94,10 @@ class ToolStorage
         auto desc = tool.description();
         auto in_schema = tool.input_schema();
         auto out_schema = tool.output_schema();
-        StoredTool stored{tool_name, std::move(desc), std::move(in_schema), std::move(out_schema),
+        StoredTool stored{tool_name,
+                          std::move(desc),
+                          std::move(in_schema),
+                          std::move(out_schema),
                           make_handler_from(std::forward<ToolWrapper>(tool)),
                           std::move(annotations)};
 

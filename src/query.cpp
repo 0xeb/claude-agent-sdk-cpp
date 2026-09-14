@@ -150,7 +150,8 @@ QueryResult query(const std::string& prompt, const ClaudeOptions& options)
                                 oss << ": ";
                                 for (size_t i = 0; i < result.errors->size(); ++i)
                                 {
-                                    if (i > 0) oss << "; ";
+                                    if (i > 0)
+                                        oss << "; ";
                                     oss << (*result.errors)[i];
                                 }
                             }

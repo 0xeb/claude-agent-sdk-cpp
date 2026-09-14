@@ -7,11 +7,10 @@
 // Use the templated API exclusively (no decorator macros) per
 // examples/extensions/ policy.
 
+#include <chrono>
 #include <claude/claude.hpp>
 #include <claude/sessions/file_session_store.hpp>
 #include <claude/sessions/free_functions.hpp>
-
-#include <chrono>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -34,12 +33,11 @@ fs::path make_temp_store_root()
 claude::json user_entry(const std::string& uuid, const std::string& text,
                         const std::string& session_id)
 {
-    return claude::json{
-        {"type", "user"},
-        {"uuid", uuid},
-        {"sessionId", session_id},
-        {"timestamp", "2024-01-01T00:00:00.000Z"},
-        {"message", {{"role", "user"}, {"content", text}}}};
+    return claude::json{{"type", "user"},
+                        {"uuid", uuid},
+                        {"sessionId", session_id},
+                        {"timestamp", "2024-01-01T00:00:00.000Z"},
+                        {"message", {{"role", "user"}, {"content", text}}}};
 }
 } // namespace
 
@@ -64,19 +62,16 @@ int main()
     // Subagent transcripts go under <session>/<subpath>.jsonl
     claude::SessionKey sub{project_key, session_id, std::string("subagents/agent-a")};
     store->append(sub, {
-                          user_entry("cccccccc-0000-4000-8000-000000000003",
-                                     "Subagent reasoning step.", session_id),
-                      });
+                           user_entry("cccccccc-0000-4000-8000-000000000003",
+                                      "Subagent reasoning step.", session_id),
+                       });
 
     fs::path expected_main = root / project_key / (session_id + ".jsonl");
-    fs::path expected_sub =
-        root / project_key / session_id / "subagents" / "agent-a.jsonl";
-    std::cout << "[disk] main JSONL exists: "
-              << (fs::exists(expected_main) ? "yes" : "no") << " (" << expected_main.string()
-              << ")\n";
-    std::cout << "[disk] subagent JSONL exists: "
-              << (fs::exists(expected_sub) ? "yes" : "no") << " (" << expected_sub.string()
-              << ")\n";
+    fs::path expected_sub = root / project_key / session_id / "subagents" / "agent-a.jsonl";
+    std::cout << "[disk] main JSONL exists: " << (fs::exists(expected_main) ? "yes" : "no") << " ("
+              << expected_main.string() << ")\n";
+    std::cout << "[disk] subagent JSONL exists: " << (fs::exists(expected_sub) ? "yes" : "no")
+              << " (" << expected_sub.string() << ")\n";
 
     auto sessions_list = store->list_sessions(project_key);
     std::cout << "[list] sessions in project: " << sessions_list.size() << "\n";

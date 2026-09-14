@@ -33,8 +33,7 @@ class InMemorySessionStore final : public SessionStore
         return SessionStoreCapability::All;
     }
 
-    void append(const SessionKey& key,
-                const std::vector<SessionStoreEntry>& entries) override;
+    void append(const SessionKey& key, const std::vector<SessionStoreEntry>& entries) override;
     std::optional<std::vector<SessionStoreEntry>> load(const SessionKey& key) override;
     std::vector<SessionStoreListEntry> list_sessions(const std::string& project_key) override;
     std::vector<SessionSummaryEntry>

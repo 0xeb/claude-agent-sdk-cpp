@@ -35,8 +35,7 @@ struct MaterializedResume
 /// Throws std::runtime_error when the session is not found.
 ///
 /// Python: _internal/session_resume.py:materialize_resume_session (line 200).
-MaterializedResume materialize_resume_session(SessionStore& store,
-                                              const std::string& project_key,
+MaterializedResume materialize_resume_session(SessionStore& store, const std::string& project_key,
                                               const std::string& session_id);
 
 /// Construct a TranscriptMirrorBatcher whose path resolver maps temp-dir
@@ -45,8 +44,7 @@ MaterializedResume materialize_resume_session(SessionStore& store,
 ///
 /// Python: _internal/session_resume.py:build_mirror_batcher (line 89).
 std::shared_ptr<TranscriptMirrorBatcher>
-build_mirror_batcher(std::shared_ptr<SessionStore> store,
-                     const std::filesystem::path& projects_dir,
+build_mirror_batcher(std::shared_ptr<SessionStore> store, const std::filesystem::path& projects_dir,
                      TranscriptMirrorBatcher::OnError on_error);
 
 } // namespace claude::sessions

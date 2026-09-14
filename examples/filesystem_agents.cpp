@@ -26,16 +26,10 @@ std::vector<std::string> extract_agents(const claude::SystemMessage& msg)
     {
         const auto& agents = msg.raw_json["data"]["agents"];
         for (const auto& a : agents)
-        {
             if (a.is_string())
-            {
                 result.push_back(a.get<std::string>());
-            }
             else if (a.is_object() && a.contains("name"))
-            {
                 result.push_back(a["name"].get<std::string>());
-            }
-        }
     }
 
     return result;
@@ -87,8 +81,8 @@ int main()
             {
                 message_types.push_back("ResultMessage");
                 const auto& result_msg = std::get<claude::ResultMessage>(msg);
-                std::cout << "Result: subtype=" << result_msg.subtype
-                          << ", cost=$" << result_msg.total_cost_usd() << "\n";
+                std::cout << "Result: subtype=" << result_msg.subtype << ", cost=$"
+                          << result_msg.total_cost_usd() << "\n";
             }
             else if (std::holds_alternative<claude::UserMessage>(msg))
             {

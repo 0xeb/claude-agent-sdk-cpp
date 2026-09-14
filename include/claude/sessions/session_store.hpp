@@ -105,8 +105,7 @@ class SessionStore
     }
 
     /// Mirror a batch of transcript entries (called AFTER local write succeeds).
-    virtual void append(const SessionKey& key,
-                        const std::vector<SessionStoreEntry>& entries) = 0;
+    virtual void append(const SessionKey& key, const std::vector<SessionStoreEntry>& entries) = 0;
 
     /// Load a full session for resume. Returns std::nullopt for keys that were
     /// never written.

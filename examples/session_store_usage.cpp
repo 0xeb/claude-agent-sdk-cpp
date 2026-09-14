@@ -12,7 +12,6 @@
 #include <claude/sessions/free_functions.hpp>
 #include <claude/sessions/in_memory_session_store.hpp>
 #include <claude/sessions/session_mutations.hpp>
-
 #include <cstdlib>
 #include <iostream>
 #include <memory>
@@ -35,12 +34,11 @@ void demonstrate_store_api()
     const std::string session_id = "00000000-0000-4000-8000-000000000001";
     claude::SessionKey key{project_key, session_id, std::nullopt};
 
-    claude::json user_entry = {
-        {"type", "user"},
-        {"uuid", "11111111-1111-4111-8111-111111111111"},
-        {"sessionId", session_id},
-        {"timestamp", "2024-01-01T00:00:00.000Z"},
-        {"message", {{"role", "user"}, {"content", "Hello from C++"}}}};
+    claude::json user_entry = {{"type", "user"},
+                               {"uuid", "11111111-1111-4111-8111-111111111111"},
+                               {"sessionId", session_id},
+                               {"timestamp", "2024-01-01T00:00:00.000Z"},
+                               {"message", {{"role", "user"}, {"content", "Hello from C++"}}}};
     claude::json assistant_entry = {
         {"type", "assistant"},
         {"uuid", "22222222-2222-4222-8222-222222222222"},
@@ -86,8 +84,8 @@ void demonstrate_query_with_store()
             if (claude::is_assistant_message(msg))
             {
                 const auto& assistant = std::get<claude::AssistantMessage>(msg);
-                std::cout << "[query] assistant: "
-                          << claude::get_text_content(assistant.content) << "\n";
+                std::cout << "[query] assistant: " << claude::get_text_content(assistant.content)
+                          << "\n";
             }
         }
         std::cout << "[query] in-memory store now holds " << store->size() << " session(s)\n";

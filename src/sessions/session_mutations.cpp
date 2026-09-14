@@ -1,8 +1,7 @@
-#include <claude/sessions/session_mutations.hpp>
-#include <claude/sessions/session_store_validation.hpp>
-
 #include <algorithm>
 #include <chrono>
+#include <claude/sessions/session_mutations.hpp>
+#include <claude/sessions/session_store_validation.hpp>
 #include <cstdint>
 #include <cstdio>
 #include <ctime>
@@ -24,9 +23,8 @@ namespace
 // Python: _UUID_RE
 const std::regex& uuid_re()
 {
-    static const std::regex re(
-        R"(^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$)",
-        std::regex::icase);
+    static const std::regex re(R"(^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$)",
+                               std::regex::icase);
     return re;
 }
 
@@ -53,9 +51,9 @@ std::string iso_now_utc()
     gmtime_r(&t, &gm);
 #endif
     char buf[40];
-    std::snprintf(buf, sizeof(buf), "%04d-%02d-%02dT%02d:%02d:%02d.%03dZ",
-                  gm.tm_year + 1900, gm.tm_mon + 1, gm.tm_mday,
-                  gm.tm_hour, gm.tm_min, gm.tm_sec, static_cast<int>(ms.count()));
+    std::snprintf(buf, sizeof(buf), "%04d-%02d-%02dT%02d:%02d:%02d.%03dZ", gm.tm_year + 1900,
+                  gm.tm_mon + 1, gm.tm_mday, gm.tm_hour, gm.tm_min, gm.tm_sec,
+                  static_cast<int>(ms.count()));
     return std::string(buf);
 }
 
@@ -70,11 +68,8 @@ std::string make_uuid_v4()
     a = (a & 0xFFFFFFFFFFFF0FFFULL) | 0x0000000000004000ULL;
     b = (b & 0x3FFFFFFFFFFFFFFFULL) | 0x8000000000000000ULL;
     char buf[40];
-    std::snprintf(buf, sizeof(buf),
-                  "%08x-%04x-%04x-%04x-%012llx",
-                  static_cast<unsigned>(a >> 32),
-                  static_cast<unsigned>((a >> 16) & 0xFFFF),
-                  static_cast<unsigned>(a & 0xFFFF),
+    std::snprintf(buf, sizeof(buf), "%08x-%04x-%04x-%04x-%012llx", static_cast<unsigned>(a >> 32),
+                  static_cast<unsigned>((a >> 16) & 0xFFFF), static_cast<unsigned>(a & 0xFFFF),
                   static_cast<unsigned>((b >> 48) & 0xFFFF),
                   static_cast<unsigned long long>(b & 0xFFFFFFFFFFFFULL));
     return std::string(buf);
@@ -85,9 +80,7 @@ std::string simple_hash_base36(const std::string& s)
 {
     uint32_t h = 0;
     for (char c : s)
-    {
         h = (h << 5) - h + static_cast<unsigned char>(c);
-    }
     int32_t signed_h = static_cast<int32_t>(h);
     uint64_t abs_h = signed_h < 0 ? static_cast<uint64_t>(-static_cast<int64_t>(signed_h))
                                   : static_cast<uint64_t>(signed_h);
@@ -110,8 +103,7 @@ std::string sanitize_path(const std::string& name)
 {
     std::string sanitized = name;
     for (auto& c : sanitized)
-        if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
-              (c >= '0' && c <= '9')))
+        if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')))
             c = '-';
     if (sanitized.size() <= MAX_SANITIZED_LENGTH)
         return sanitized;
@@ -131,7 +123,8 @@ std::string sanitize_unicode(const std::string& value)
     // C++ has no portable Unicode categorization in the standard library; we
     // implement the explicit-range strip from Python plus passthrough.
     // Iterates until stable (max 10) — matches Python.
-    auto strip_ranges = [](const std::string& in) -> std::string {
+    auto strip_ranges = [](const std::string& in) -> std::string
+    {
         std::string out;
         out.reserve(in.size());
         // Walk byte-by-byte and decode UTF-8 to test code points.
@@ -148,21 +141,18 @@ std::string sanitize_unicode(const std::string& value)
             }
             else if ((c & 0xE0) == 0xC0 && i + 1 < in.size())
             {
-                cp = ((c & 0x1F) << 6) |
-                     (static_cast<unsigned char>(in[i + 1]) & 0x3F);
+                cp = ((c & 0x1F) << 6) | (static_cast<unsigned char>(in[i + 1]) & 0x3F);
                 len = 2;
             }
             else if ((c & 0xF0) == 0xE0 && i + 2 < in.size())
             {
-                cp = ((c & 0x0F) << 12) |
-                     ((static_cast<unsigned char>(in[i + 1]) & 0x3F) << 6) |
+                cp = ((c & 0x0F) << 12) | ((static_cast<unsigned char>(in[i + 1]) & 0x3F) << 6) |
                      (static_cast<unsigned char>(in[i + 2]) & 0x3F);
                 len = 3;
             }
             else if ((c & 0xF8) == 0xF0 && i + 3 < in.size())
             {
-                cp = ((c & 0x07) << 18) |
-                     ((static_cast<unsigned char>(in[i + 1]) & 0x3F) << 12) |
+                cp = ((c & 0x07) << 18) | ((static_cast<unsigned char>(in[i + 1]) & 0x3F) << 12) |
                      ((static_cast<unsigned char>(in[i + 2]) & 0x3F) << 6) |
                      (static_cast<unsigned char>(in[i + 3]) & 0x3F);
                 len = 4;
@@ -173,10 +163,9 @@ std::string sanitize_unicode(const std::string& value)
                 ++i;
                 continue;
             }
-            bool strip =
-                (cp >= 0x200B && cp <= 0x200F) || (cp >= 0x202A && cp <= 0x202E) ||
-                (cp >= 0x2066 && cp <= 0x2069) || cp == 0xFEFF ||
-                (cp >= 0xE000 && cp <= 0xF8FF);
+            bool strip = (cp >= 0x200B && cp <= 0x200F) || (cp >= 0x202A && cp <= 0x202E) ||
+                         (cp >= 0x2066 && cp <= 0x2069) || cp == 0xFEFF ||
+                         (cp >= 0xE000 && cp <= 0xF8FF);
             if (!strip)
                 out.append(in, i, len);
             i += len;
@@ -205,10 +194,8 @@ std::string project_key_for_directory(const std::string& directory)
     return sanitize_path(s);
 }
 
-void rename_session_via_store(SessionStore& store,
-                              const std::string& session_id,
-                              const std::string& title,
-                              const std::string& directory)
+void rename_session_via_store(SessionStore& store, const std::string& session_id,
+                              const std::string& title, const std::string& directory)
 {
     if (!validate_uuid(session_id))
         throw std::invalid_argument("Invalid session_id: " + session_id);
@@ -218,19 +205,14 @@ void rename_session_via_store(SessionStore& store,
 
     SessionKey key{project_key_for_directory(directory), session_id, std::nullopt};
     json entry = {
-        {"type", "custom-title"},
-        {"customTitle", stripped},
-        {"sessionId", session_id},
-        {"uuid", make_uuid_v4()},
-        {"timestamp", iso_now_utc()},
+        {"type", "custom-title"}, {"customTitle", stripped},    {"sessionId", session_id},
+        {"uuid", make_uuid_v4()}, {"timestamp", iso_now_utc()},
     };
     store.append(key, {entry});
 }
 
-void tag_session_via_store(SessionStore& store,
-                           const std::string& session_id,
-                           const std::optional<std::string>& tag,
-                           const std::string& directory)
+void tag_session_via_store(SessionStore& store, const std::string& session_id,
+                           const std::optional<std::string>& tag, const std::string& directory)
 {
     if (!validate_uuid(session_id))
         throw std::invalid_argument("Invalid session_id: " + session_id);
@@ -244,17 +226,13 @@ void tag_session_via_store(SessionStore& store,
     }
     SessionKey key{project_key_for_directory(directory), session_id, std::nullopt};
     json entry = {
-        {"type", "tag"},
-        {"tag", final_tag},
-        {"sessionId", session_id},
-        {"uuid", make_uuid_v4()},
-        {"timestamp", iso_now_utc()},
+        {"type", "tag"},          {"tag", final_tag},           {"sessionId", session_id},
+        {"uuid", make_uuid_v4()}, {"timestamp", iso_now_utc()},
     };
     store.append(key, {entry});
 }
 
-void delete_session_via_store(SessionStore& store,
-                              const std::string& session_id,
+void delete_session_via_store(SessionStore& store, const std::string& session_id,
                               const std::string& directory)
 {
     if (!validate_uuid(session_id))
@@ -270,15 +248,14 @@ namespace
 
 const std::unordered_set<std::string>& transcript_types()
 {
-    static const std::unordered_set<std::string> s = {
-        "user", "assistant", "attachment", "system", "progress"};
+    static const std::unordered_set<std::string> s = {"user", "assistant", "attachment", "system",
+                                                      "progress"};
     return s;
 }
 
 } // namespace
 
-ForkSessionResult fork_session_via_store(SessionStore& store,
-                                         const std::string& session_id,
+ForkSessionResult fork_session_via_store(SessionStore& store, const std::string& session_id,
                                          const std::string& directory,
                                          const std::string& up_to_message_id,
                                          const std::optional<std::string>& title)
@@ -331,8 +308,8 @@ ForkSessionResult fork_session_via_store(SessionStore& store,
             }
         }
         if (cutoff < 0)
-            throw std::runtime_error("Message " + up_to_message_id +
-                                     " not found in session " + session_id);
+            throw std::runtime_error("Message " + up_to_message_id + " not found in session " +
+                                     session_id);
         transcript.resize(cutoff + 1);
     }
 
@@ -361,8 +338,7 @@ ForkSessionResult fork_session_via_store(SessionStore& store,
         std::string new_uuid = uuid_map[original.at("uuid").get<std::string>()];
 
         json new_parent = nullptr;
-        std::string parent_id =
-            original.value("parentUuid", std::string());
+        std::string parent_id = original.value("parentUuid", std::string());
         while (!parent_id.empty())
         {
             auto it = by_uuid.find(parent_id);
@@ -379,11 +355,9 @@ ForkSessionResult fork_session_via_store(SessionStore& store,
             parent_id = parent.value("parentUuid", std::string());
         }
 
-        std::string ts =
-            (i == writable.size() - 1) ? now : original.value("timestamp", now);
+        std::string ts = (i == writable.size() - 1) ? now : original.value("timestamp", now);
         json logical = nullptr;
-        if (original.contains("logicalParentUuid") &&
-            original["logicalParentUuid"].is_string())
+        if (original.contains("logicalParentUuid") && original["logicalParentUuid"].is_string())
         {
             auto mit = uuid_map.find(original["logicalParentUuid"].get<std::string>());
             if (mit != uuid_map.end())
@@ -403,8 +377,7 @@ ForkSessionResult fork_session_via_store(SessionStore& store,
             {"sessionId", session_id},
             {"messageUuid", original.at("uuid").get<std::string>()},
         };
-        for (const char* k :
-             {"teamName", "agentName", "slug", "sourceToolAssistantUUID"})
+        for (const char* k : {"teamName", "agentName", "slug", "sourceToolAssistantUUID"})
             forked.erase(k);
         out_entries.push_back(std::move(forked));
     }
@@ -444,10 +417,8 @@ ForkSessionResult fork_session_via_store(SessionStore& store,
     }
 
     json title_entry = {
-        {"type", "custom-title"},
-        {"sessionId", forked_session_id},
-        {"customTitle", fork_title},
-        {"uuid", make_uuid_v4()},
+        {"type", "custom-title"},    {"sessionId", forked_session_id},
+        {"customTitle", fork_title}, {"uuid", make_uuid_v4()},
         {"timestamp", now},
     };
     out_entries.push_back(std::move(title_entry));

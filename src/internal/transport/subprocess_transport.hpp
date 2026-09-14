@@ -49,7 +49,6 @@ class SubprocessTransport : public Transport
     std::vector<std::string> build_command() const;
 
   private:
-
     // Find CLI executable (honors options_.cli_path when provided)
     std::string find_cli() const;
 

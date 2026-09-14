@@ -1,6 +1,5 @@
 #include <claude/sessions/session_import.hpp>
 #include <claude/sessions/session_mutations.hpp>
-
 #include <fstream>
 #include <stdexcept>
 
@@ -12,9 +11,7 @@ namespace fs = std::filesystem;
 namespace
 {
 
-void append_jsonl_in_batches(const fs::path& path,
-                             const SessionKey& key,
-                             SessionStore& store,
+void append_jsonl_in_batches(const fs::path& path, const SessionKey& key, SessionStore& store,
                              std::size_t batch_size)
 {
     std::ifstream f(path, std::ios::binary);
@@ -52,12 +49,9 @@ void append_jsonl_in_batches(const fs::path& path,
 
 } // namespace
 
-void import_session_to_store(const std::string& session_id,
-                             SessionStore& store,
-                             const fs::path& jsonl_path,
-                             const std::string& project_key,
-                             bool include_subagents,
-                             std::size_t batch_size)
+void import_session_to_store(const std::string& session_id, SessionStore& store,
+                             const fs::path& jsonl_path, const std::string& project_key,
+                             bool include_subagents, std::size_t batch_size)
 {
     if (!validate_uuid(session_id))
         throw std::invalid_argument("Invalid session_id: " + session_id);
@@ -65,8 +59,7 @@ void import_session_to_store(const std::string& session_id,
         batch_size = MAX_PENDING_ENTRIES;
     std::error_code ec;
     if (!fs::exists(jsonl_path, ec))
-        throw std::runtime_error("Session " + session_id + " not found: " +
-                                 jsonl_path.string());
+        throw std::runtime_error("Session " + session_id + " not found: " + jsonl_path.string());
 
     SessionKey main_key{project_key, session_id, std::nullopt};
     append_jsonl_in_batches(jsonl_path, main_key, store, batch_size);

@@ -456,12 +456,11 @@ TEST(McpAnnotations, ToolsListResponseIncludesAnnotations)
     ann.read_only_hint = true;
     ann.destructive_hint = false;
 
-    auto server_handler =
-        server("annotated-server", "1.0")
-            .add_tool(make_tool("read_file", "Read a file", [](std::string path) { return path; },
-                                {"path"}),
-                      ann)
-            .build();
+    auto server_handler = server("annotated-server", "1.0")
+                              .add_tool(make_tool("read_file", "Read a file",
+                                                  [](std::string path) { return path; }, {"path"}),
+                                        ann)
+                              .build();
 
     json request = {{"jsonrpc", "2.0"}, {"method", "tools/list"}, {"id", 1}};
     json response = server_handler(request);
@@ -479,8 +478,7 @@ TEST(McpAnnotations, ToolsListResponseOmitsEmptyAnnotations)
 {
     auto server_handler =
         server("plain-server", "1.0")
-            .add_tool(
-                make_tool("echo", "Echo input", [](std::string s) { return s; }, {"input"}))
+            .add_tool(make_tool("echo", "Echo input", [](std::string s) { return s; }, {"input"}))
             .build();
 
     json request = {{"jsonrpc", "2.0"}, {"method", "tools/list"}, {"id", 1}};

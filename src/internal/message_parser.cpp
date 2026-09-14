@@ -369,16 +369,12 @@ SystemMessage MessageParser::parse_system_message(const claude::json& j)
     {
         msg.subtype = subtype;
         if (j.contains("content"))
-        {
             if (j["content"].is_string())
                 msg.content = j["content"].get<std::string>();
             else
                 msg.content = j["content"].dump();
-        }
         else
-        {
             msg.content = "";
-        }
         msg.raw_json = j;
     };
 

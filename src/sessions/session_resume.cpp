@@ -1,7 +1,6 @@
+#include <chrono>
 #include <claude/sessions/session_resume.hpp>
 #include <claude/sessions/session_store_validation.hpp>
-
-#include <chrono>
 #include <fstream>
 #include <random>
 #include <sstream>
@@ -75,8 +74,7 @@ fs::path subpath_to_path(const fs::path& session_dir, const std::string& subpath
 
 } // namespace
 
-MaterializedResume materialize_resume_session(SessionStore& store,
-                                              const std::string& project_key,
+MaterializedResume materialize_resume_session(SessionStore& store, const std::string& project_key,
                                               const std::string& session_id)
 {
     SessionKey main_key{project_key, session_id, std::nullopt};
@@ -105,12 +103,10 @@ MaterializedResume materialize_resume_session(SessionStore& store,
             std::vector<json> transcript;
             std::vector<json> meta;
             for (const auto& e : *sub_loaded)
-            {
                 if (e.is_object() && e.value("type", "") == "agent_metadata")
                     meta.push_back(e);
                 else
                     transcript.push_back(e);
-            }
             fs::path target = subpath_to_path(session_dir, sp);
             if (!transcript.empty())
                 write_jsonl(target, transcript);
@@ -118,8 +114,7 @@ MaterializedResume materialize_resume_session(SessionStore& store,
             {
                 fs::path meta_path = target;
                 std::string fn = meta_path.filename().string();
-                fn = fn.substr(0, fn.size() - std::string(".jsonl").size()) +
-                     ".meta.json";
+                fn = fn.substr(0, fn.size() - std::string(".jsonl").size()) + ".meta.json";
                 meta_path = meta_path.parent_path() / fn;
                 std::error_code ec;
                 fs::create_directories(meta_path.parent_path(), ec);
@@ -140,7 +135,8 @@ MaterializedResume materialize_resume_session(SessionStore& store,
     MaterializedResume out;
     out.config_dir = config_dir;
     out.resume_session_id = session_id;
-    out.cleanup = [config_dir]() {
+    out.cleanup = [config_dir]()
+    {
         std::error_code ec;
         fs::remove_all(config_dir, ec);
     };
@@ -148,12 +144,12 @@ MaterializedResume materialize_resume_session(SessionStore& store,
 }
 
 std::shared_ptr<TranscriptMirrorBatcher>
-build_mirror_batcher(std::shared_ptr<SessionStore> store,
-                     const std::filesystem::path& projects_dir,
+build_mirror_batcher(std::shared_ptr<SessionStore> store, const std::filesystem::path& projects_dir,
                      TranscriptMirrorBatcher::OnError on_error)
 {
     fs::path pd = projects_dir;
-    FilePathToKey resolver = [pd](const std::string& file_path) -> std::optional<SessionKey> {
+    FilePathToKey resolver = [pd](const std::string& file_path) -> std::optional<SessionKey>
+    {
         std::error_code ec;
         fs::path p(file_path);
         fs::path rel = fs::relative(p, pd, ec);
@@ -173,7 +169,8 @@ build_mirror_batcher(std::shared_ptr<SessionStore> store,
         if (parts.size() < 2)
             return std::nullopt;
         const std::string suffix = ".jsonl";
-        auto ends_with = [&](const std::string& s) {
+        auto ends_with = [&](const std::string& s)
+        {
             return s.size() >= suffix.size() &&
                    s.compare(s.size() - suffix.size(), suffix.size(), suffix) == 0;
         };

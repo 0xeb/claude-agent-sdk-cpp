@@ -43,9 +43,11 @@ jobs:
 
       - name: Configure (Windows)
         if: runner.os == 'Windows'
+        # Deliberately no -G: runner images rotate their Visual Studio version, and pinning
+        # one ("Visual Studio 17 2022") breaks the Windows job the moment the image moves on.
+        # CMake's default generator is correct on the runner.
         run: >
           cmake -B build -S .
-          -G "Visual Studio 17 2022"
           -DCLAUDE_BUILD_TESTS=OFF
           -DCLAUDE_BUILD_EXAMPLES=ON
 

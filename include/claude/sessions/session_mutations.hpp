@@ -40,17 +40,14 @@ std::string project_key_for_directory(const std::string& directory = "");
 /// Throws std::invalid_argument for invalid session_id or empty title.
 ///
 /// Python: session_mutations.py:rename_session_via_store (line 769).
-void rename_session_via_store(SessionStore& store,
-                              const std::string& session_id,
-                              const std::string& title,
-                              const std::string& directory = "");
+void rename_session_via_store(SessionStore& store, const std::string& session_id,
+                              const std::string& title, const std::string& directory = "");
 
 /// Tag a session by appending a ``tag`` entry. Pass empty/std::nullopt to
 /// clear the tag.
 ///
 /// Python: session_mutations.py:tag_session_via_store (line 810).
-void tag_session_via_store(SessionStore& store,
-                           const std::string& session_id,
+void tag_session_via_store(SessionStore& store, const std::string& session_id,
                            const std::optional<std::string>& tag,
                            const std::string& directory = "");
 
@@ -58,8 +55,7 @@ void tag_session_via_store(SessionStore& store,
 /// delete (WORM-friendly).
 ///
 /// Python: session_mutations.py:delete_session_via_store (line 851).
-void delete_session_via_store(SessionStore& store,
-                              const std::string& session_id,
+void delete_session_via_store(SessionStore& store, const std::string& session_id,
                               const std::string& directory = "");
 
 /// Fork a session into a new branch with fresh UUIDs.
@@ -71,8 +67,7 @@ void delete_session_via_store(SessionStore& store,
 /// cutoff.
 ///
 /// Python: session_mutations.py:fork_session_via_store (line 885).
-ForkSessionResult fork_session_via_store(SessionStore& store,
-                                         const std::string& session_id,
+ForkSessionResult fork_session_via_store(SessionStore& store, const std::string& session_id,
                                          const std::string& directory = "",
                                          const std::string& up_to_message_id = "",
                                          const std::optional<std::string>& title = std::nullopt);

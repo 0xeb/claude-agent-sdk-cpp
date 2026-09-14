@@ -160,9 +160,7 @@ TEST(V0135Parity, EffortLevelMax)
     {
         QueryResult result = query("What is 2+2?", opts);
         if (result.messages().empty())
-        {
             GTEST_SKIP() << "CLI does not support --effort flag (need >= 2.2.0)";
-        }
 
         bool found_text = false;
         for (const auto& msg : result)
@@ -199,9 +197,7 @@ TEST(V0135Parity, EffortAndThinkingCombined)
     {
         QueryResult result = query("What is 15 * 17?", opts);
         if (result.messages().empty())
-        {
             GTEST_SKIP() << "CLI does not support --effort flag (need >= 2.2.0)";
-        }
 
         bool found_text = false;
         for (const auto& msg : result)

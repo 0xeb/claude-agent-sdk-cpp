@@ -50,7 +50,8 @@ struct ProcessHandle
 // when the client process terminates (even abnormally).
 static HANDLE get_child_process_job()
 {
-    static HANDLE job = []() -> HANDLE {
+    static HANDLE job = []() -> HANDLE
+    {
         HANDLE h = CreateJobObjectA(nullptr, nullptr);
         if (h)
         {

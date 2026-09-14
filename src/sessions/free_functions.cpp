@@ -1,9 +1,8 @@
+#include <algorithm>
 #include <claude/sessions/free_functions.hpp>
 #include <claude/sessions/session_mutations.hpp>
 #include <claude/sessions/session_store_validation.hpp>
 #include <claude/sessions/session_summary.hpp>
-
-#include <algorithm>
 #include <set>
 #include <stdexcept>
 #include <unordered_map>
@@ -17,8 +16,8 @@ namespace
 
 const std::unordered_set<std::string>& chain_entry_types()
 {
-    static const std::unordered_set<std::string> s = {
-        "user", "assistant", "progress", "system", "attachment"};
+    static const std::unordered_set<std::string> s = {"user", "assistant", "progress", "system",
+                                                      "attachment"};
     return s;
 }
 
@@ -30,8 +29,7 @@ std::vector<json> filter_transcript_entries(const std::vector<SessionStoreEntry>
         if (!e.is_object())
             continue;
         auto t = e.value("type", std::string());
-        if (chain_entry_types().count(t) && e.contains("uuid") &&
-            e.at("uuid").is_string())
+        if (chain_entry_types().count(t) && e.contains("uuid") && e.at("uuid").is_string())
             out.push_back(e);
     }
     return out;
@@ -111,7 +109,8 @@ std::vector<json> build_conversation_chain(const std::vector<json>& entries)
     if (leaves.empty())
         return {};
 
-    auto is_main = [&](const json* e) {
+    auto is_main = [&](const json* e)
+    {
         if (e->value("isSidechain", false))
             return false;
         if (e->value("isMeta", false))
@@ -127,7 +126,8 @@ std::vector<json> build_conversation_chain(const std::vector<json>& entries)
         if (is_main(l))
             main_leaves.push_back(l);
 
-    auto pick_best = [&](const std::vector<const json*>& cands) -> const json* {
+    auto pick_best = [&](const std::vector<const json*>& cands) -> const json*
+    {
         const json* best = cands[0];
         size_t best_idx = index[best->at("uuid").get<std::string>()];
         for (size_t i = 1; i < cands.size(); ++i)
@@ -209,11 +209,9 @@ std::vector<SessionMessage> apply_paging(const std::vector<SessionMessage>& msgs
 
 } // namespace
 
-std::vector<SDKSessionInfo>
-list_sessions_from_store(SessionStore& store,
-                         const std::string& directory,
-                         std::optional<int> limit,
-                         int offset)
+std::vector<SDKSessionInfo> list_sessions_from_store(SessionStore& store,
+                                                     const std::string& directory,
+                                                     std::optional<int> limit, int offset)
 {
     std::string project_key = project_key_for_directory(directory);
     std::string project_path = directory;
@@ -222,23 +220,21 @@ list_sessions_from_store(SessionStore& store,
     bool has_list = store_implements(store, SessionStoreCapability::ListSessions);
 
     if (!has_summaries && !has_list)
-        throw std::invalid_argument(
-            "session_store implements neither list_session_summaries() nor "
-            "list_sessions() -- cannot list sessions.");
+        throw std::invalid_argument("session_store implements neither list_session_summaries() nor "
+                                    "list_sessions() -- cannot list sessions.");
 
-    auto load_jsonl_and_lite_parse =
-        [&](const std::string& sid, int64_t mtime) -> std::optional<SDKSessionInfo> {
+    auto load_jsonl_and_lite_parse = [&](const std::string& sid,
+                                         int64_t mtime) -> std::optional<SDKSessionInfo>
+    {
         SessionKey k{project_key, sid, std::nullopt};
         auto loaded = store.load(k);
         if (!loaded.has_value() || loaded->empty())
             return std::nullopt;
         // Fold all entries into a synthetic summary, then convert to info.
-        SessionSummaryEntry folded =
-            fold_session_summary(std::nullopt, k, *loaded);
+        SessionSummaryEntry folded = fold_session_summary(std::nullopt, k, *loaded);
         folded.mtime = mtime;
         auto info = summary_entry_to_sdk_info(
-            folded, project_path.empty() ? std::nullopt
-                                         : std::optional<std::string>(project_path));
+            folded, project_path.empty() ? std::nullopt : std::optional<std::string>(project_path));
         if (info)
             info->last_modified = mtime;
         return info;
@@ -278,8 +274,7 @@ list_sessions_from_store(SessionStore& store,
                     continue;
             }
             auto info = summary_entry_to_sdk_info(
-                s, project_path.empty() ? std::nullopt
-                                        : std::optional<std::string>(project_path));
+                s, project_path.empty() ? std::nullopt : std::optional<std::string>(project_path));
             if (!info)
             {
                 fresh_ids.insert(s.session_id);
@@ -312,8 +307,7 @@ list_sessions_from_store(SessionStore& store,
         if (start > static_cast<int>(slots.size()))
             start = static_cast<int>(slots.size());
         std::vector<Slot> page(slots.begin() + start, slots.end());
-        if (limit.has_value() && *limit > 0 &&
-            static_cast<int>(page.size()) > *limit)
+        if (limit.has_value() && *limit > 0 && static_cast<int>(page.size()) > *limit)
             page.resize(*limit);
         for (auto& sl : page)
             if (sl.needs_load)
@@ -332,24 +326,20 @@ list_sessions_from_store(SessionStore& store,
         if (info)
             results.push_back(std::move(*info));
     }
-    std::sort(results.begin(), results.end(),
-              [](const SDKSessionInfo& a, const SDKSessionInfo& b) {
-                  return a.last_modified > b.last_modified;
-              });
+    std::sort(results.begin(), results.end(), [](const SDKSessionInfo& a, const SDKSessionInfo& b)
+              { return a.last_modified > b.last_modified; });
     int start = std::max(0, offset);
     if (start > static_cast<int>(results.size()))
         start = static_cast<int>(results.size());
     std::vector<SDKSessionInfo> out(results.begin() + start, results.end());
-    if (limit.has_value() && *limit > 0 &&
-        static_cast<int>(out.size()) > *limit)
+    if (limit.has_value() && *limit > 0 && static_cast<int>(out.size()) > *limit)
         out.resize(*limit);
     return out;
 }
 
-std::optional<SDKSessionInfo>
-get_session_info_from_store(SessionStore& store,
-                            const std::string& session_id,
-                            const std::string& directory)
+std::optional<SDKSessionInfo> get_session_info_from_store(SessionStore& store,
+                                                          const std::string& session_id,
+                                                          const std::string& directory)
 {
     if (!validate_uuid(session_id))
         return std::nullopt;
@@ -362,8 +352,7 @@ get_session_info_from_store(SessionStore& store,
     int64_t mtime = 0;
     for (auto it = loaded->rbegin(); it != loaded->rend(); ++it)
     {
-        if (it->is_object() && it->contains("timestamp") &&
-            (*it)["timestamp"].is_string())
+        if (it->is_object() && it->contains("timestamp") && (*it)["timestamp"].is_string())
         {
             auto v = iso_to_epoch_ms((*it)["timestamp"].get<std::string>());
             if (v)
@@ -376,18 +365,16 @@ get_session_info_from_store(SessionStore& store,
     SessionSummaryEntry folded = fold_session_summary(std::nullopt, k, *loaded);
     folded.mtime = mtime;
     auto info = summary_entry_to_sdk_info(
-        folded,
-        directory.empty() ? std::nullopt : std::optional<std::string>(directory));
+        folded, directory.empty() ? std::nullopt : std::optional<std::string>(directory));
     if (info)
         info->last_modified = mtime;
     return info;
 }
 
-std::vector<SessionMessage>
-get_session_messages_from_store(SessionStore& store,
-                                const std::string& session_id,
-                                const std::string& directory,
-                                std::optional<int> limit, int offset)
+std::vector<SessionMessage> get_session_messages_from_store(SessionStore& store,
+                                                            const std::string& session_id,
+                                                            const std::string& directory,
+                                                            std::optional<int> limit, int offset)
 {
     if (!validate_uuid(session_id))
         return {};
@@ -405,10 +392,9 @@ get_session_messages_from_store(SessionStore& store,
     return apply_paging(msgs, limit, offset);
 }
 
-std::vector<std::string>
-list_subagents_from_store(SessionStore& store,
-                          const std::string& session_id,
-                          const std::string& directory)
+std::vector<std::string> list_subagents_from_store(SessionStore& store,
+                                                   const std::string& session_id,
+                                                   const std::string& directory)
 {
     if (!validate_uuid(session_id))
         return {};
@@ -437,12 +423,11 @@ list_subagents_from_store(SessionStore& store,
     return ids;
 }
 
-std::vector<SessionMessage>
-get_subagent_messages_from_store(SessionStore& store,
-                                 const std::string& session_id,
-                                 const std::string& agent_id,
-                                 const std::string& directory,
-                                 std::optional<int> limit, int offset)
+std::vector<SessionMessage> get_subagent_messages_from_store(SessionStore& store,
+                                                             const std::string& session_id,
+                                                             const std::string& agent_id,
+                                                             const std::string& directory,
+                                                             std::optional<int> limit, int offset)
 {
     if (!validate_uuid(session_id) || agent_id.empty())
         return {};

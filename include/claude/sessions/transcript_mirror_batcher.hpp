@@ -1,8 +1,8 @@
 #ifndef CLAUDE_SESSIONS_TRANSCRIPT_MIRROR_BATCHER_HPP
 #define CLAUDE_SESSIONS_TRANSCRIPT_MIRROR_BATCHER_HPP
 
-#include <claude/sessions/session_store.hpp>
 #include <atomic>
+#include <claude/sessions/session_store.hpp>
 #include <condition_variable>
 #include <cstddef>
 #include <deque>
@@ -26,8 +26,7 @@ constexpr int MIRROR_APPEND_MAX_ATTEMPTS = 3;
 /// via a file path (matching the Python ``file_path_to_session_key`` helper);
 /// callers wire a resolver appropriate to their environment. Returns
 /// std::nullopt to drop the frame with a logged warning.
-using FilePathToKey =
-    std::function<std::optional<SessionKey>(const std::string& file_path)>;
+using FilePathToKey = std::function<std::optional<SessionKey>(const std::string& file_path)>;
 
 /// Batching layer between transcript_mirror frames and a SessionStore.
 ///
@@ -51,10 +50,8 @@ class TranscriptMirrorBatcher
   public:
     using OnError = std::function<void(const std::optional<SessionKey>&, const std::string&)>;
 
-    TranscriptMirrorBatcher(std::shared_ptr<SessionStore> store,
-                            FilePathToKey resolver,
-                            OnError on_error,
-                            std::size_t max_pending_entries = MAX_PENDING_ENTRIES,
+    TranscriptMirrorBatcher(std::shared_ptr<SessionStore> store, FilePathToKey resolver,
+                            OnError on_error, std::size_t max_pending_entries = MAX_PENDING_ENTRIES,
                             std::size_t max_pending_bytes = MAX_PENDING_BYTES);
     ~TranscriptMirrorBatcher();
 
@@ -63,8 +60,7 @@ class TranscriptMirrorBatcher
 
     /// Buffer a mirror frame. Schedules an eager flush if size thresholds
     /// are exceeded. Non-blocking; never raises.
-    void enqueue(const std::string& file_path,
-                 std::vector<SessionStoreEntry> entries);
+    void enqueue(const std::string& file_path, std::vector<SessionStoreEntry> entries);
 
     /// Flush all pending entries synchronously. Blocks until the worker
     /// has drained the queue.

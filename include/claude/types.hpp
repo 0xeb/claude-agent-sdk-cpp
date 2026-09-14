@@ -864,7 +864,7 @@ struct AssistantMessage
     std::optional<std::string> stop_reason = std::nullopt;
     std::optional<std::string> session_id = std::nullopt;
     std::optional<std::string> uuid = std::nullopt;
-    json raw_json;                              // Original JSON from CLI (optional, for debugging)
+    json raw_json; // Original JSON from CLI (optional, for debugging)
 };
 
 struct SystemMessage
@@ -943,7 +943,7 @@ struct ResultMessage
     std::optional<int> api_error_status = std::nullopt;
     /// Result message UUID (Python commit 24b9b68).
     std::optional<std::string> uuid = std::nullopt;
-    json raw_json;                         // Original JSON from CLI (optional, for debugging)
+    json raw_json; // Original JSON from CLI (optional, for debugging)
 
     // Convenience accessors (allows both nested and flat access)
     const std::string& session_id() const
@@ -1025,9 +1025,8 @@ struct TaskUsage
 
     json to_json() const
     {
-        return json{{"total_tokens", total_tokens},
-                    {"tool_uses", tool_uses},
-                    {"duration_ms", duration_ms}};
+        return json{
+            {"total_tokens", total_tokens}, {"tool_uses", tool_uses}, {"duration_ms", duration_ms}};
     }
 
     static TaskUsage from_json(const json& j)
@@ -1228,9 +1227,9 @@ struct RateLimitEvent
 };
 
 // Main message variant (includes protocol types and rate-limit event v0.2.82).
-using Message = std::variant<UserMessage, AssistantMessage, SystemMessage, ResultMessage,
-                             StreamEvent, RateLimitEvent, protocol::ControlRequest,
-                             protocol::ControlResponse>;
+using Message =
+    std::variant<UserMessage, AssistantMessage, SystemMessage, ResultMessage, StreamEvent,
+                 RateLimitEvent, protocol::ControlRequest, protocol::ControlResponse>;
 
 // Sandbox configuration types (v0.1.10+)
 // Controls how Claude Code sandboxes bash commands for filesystem and network isolation.
@@ -1261,8 +1260,8 @@ struct SandboxNetworkConfig
     std::optional<bool> allowLocalBinding;   // Allow binding to localhost ports (macOS only)
     /// macOS only: XPC/Mach service names to allow (supports trailing wildcard).
     std::optional<std::vector<std::string>> allowMachLookup;
-    std::optional<int> httpProxyPort;        // HTTP proxy port if bringing your own proxy
-    std::optional<int> socksProxyPort;       // SOCKS5 proxy port if bringing your own proxy
+    std::optional<int> httpProxyPort;  // HTTP proxy port if bringing your own proxy
+    std::optional<int> socksProxyPort; // SOCKS5 proxy port if bringing your own proxy
 };
 
 /// Sandbox settings configuration
@@ -1352,7 +1351,8 @@ struct ThinkingConfigDisabled
 };
 
 /// ThinkingConfig discriminated union
-using ThinkingConfig = std::variant<ThinkingConfigAdaptive, ThinkingConfigEnabled, ThinkingConfigDisabled>;
+using ThinkingConfig =
+    std::variant<ThinkingConfigAdaptive, ThinkingConfigEnabled, ThinkingConfigDisabled>;
 
 // ============================================================================
 // MCP Status Types (Python commit 28f9b4b)
@@ -1379,9 +1379,12 @@ struct McpToolAnnotations
     json to_json() const
     {
         json out = json::object();
-        if (readOnly.has_value()) out["readOnly"] = *readOnly;
-        if (destructive.has_value()) out["destructive"] = *destructive;
-        if (openWorld.has_value()) out["openWorld"] = *openWorld;
+        if (readOnly.has_value())
+            out["readOnly"] = *readOnly;
+        if (destructive.has_value())
+            out["destructive"] = *destructive;
+        if (openWorld.has_value())
+            out["openWorld"] = *openWorld;
         return out;
     }
     static McpToolAnnotations from_json(const json& j)
@@ -1406,8 +1409,10 @@ struct McpToolInfo
     json to_json() const
     {
         json out = {{"name", name}};
-        if (description.has_value()) out["description"] = *description;
-        if (annotations.has_value()) out["annotations"] = annotations->to_json();
+        if (description.has_value())
+            out["description"] = *description;
+        if (annotations.has_value())
+            out["annotations"] = annotations->to_json();
         return out;
     }
     static McpToolInfo from_json(const json& j)
@@ -1444,7 +1449,10 @@ struct McpSdkServerConfigStatus
     std::string type = "sdk";
     std::string name;
 
-    json to_json() const { return json{{"type", type}, {"name", name}}; }
+    json to_json() const
+    {
+        return json{{"type", type}, {"name", name}};
+    }
     static McpSdkServerConfigStatus from_json(const json& j)
     {
         McpSdkServerConfigStatus c;
@@ -1461,7 +1469,10 @@ struct McpClaudeAIProxyServerConfig
     std::string url;
     std::string id;
 
-    json to_json() const { return json{{"type", type}, {"url", url}, {"id", id}}; }
+    json to_json() const
+    {
+        return json{{"type", type}, {"url", url}, {"id", id}};
+    }
     static McpClaudeAIProxyServerConfig from_json(const json& j)
     {
         McpClaudeAIProxyServerConfig c;
@@ -1490,13 +1501,19 @@ struct McpServerStatus
     json to_json() const
     {
         json out = {{"name", name}, {"status", status}};
-        if (serverInfo.has_value()) out["serverInfo"] = serverInfo->to_json();
-        if (error.has_value()) out["error"] = *error;
-        if (config.has_value()) out["config"] = *config;
-        if (scope.has_value()) out["scope"] = *scope;
-        if (tools.has_value()) {
+        if (serverInfo.has_value())
+            out["serverInfo"] = serverInfo->to_json();
+        if (error.has_value())
+            out["error"] = *error;
+        if (config.has_value())
+            out["config"] = *config;
+        if (scope.has_value())
+            out["scope"] = *scope;
+        if (tools.has_value())
+        {
             json arr = json::array();
-            for (const auto& t : *tools) arr.push_back(t.to_json());
+            for (const auto& t : *tools)
+                arr.push_back(t.to_json());
             out["tools"] = arr;
         }
         return out;
@@ -1533,7 +1550,8 @@ struct McpStatusResponse
     json to_json() const
     {
         json arr = json::array();
-        for (const auto& s : mcpServers) arr.push_back(s.to_json());
+        for (const auto& s : mcpServers)
+            arr.push_back(s.to_json());
         return json{{"mcpServers", arr}};
     }
     static McpStatusResponse from_json(const json& j)
@@ -1561,7 +1579,8 @@ struct ContextUsageCategory
     json to_json() const
     {
         json out = {{"name", name}, {"tokens", tokens}, {"color", color}};
-        if (isDeferred.has_value()) out["isDeferred"] = *isDeferred;
+        if (isDeferred.has_value())
+            out["isDeferred"] = *isDeferred;
         return out;
     }
     static ContextUsageCategory from_json(const json& j)
@@ -1628,10 +1647,14 @@ struct ContextUsageResponse
             r.systemTools = j.at("systemTools").get<std::vector<json>>();
         if (j.contains("systemPromptSections") && j.at("systemPromptSections").is_array())
             r.systemPromptSections = j.at("systemPromptSections").get<std::vector<json>>();
-        if (j.contains("slashCommands")) r.slashCommands = j.at("slashCommands");
-        if (j.contains("skills")) r.skills = j.at("skills");
-        if (j.contains("messageBreakdown")) r.messageBreakdown = j.at("messageBreakdown");
-        if (j.contains("apiUsage")) r.apiUsage = j.at("apiUsage");
+        if (j.contains("slashCommands"))
+            r.slashCommands = j.at("slashCommands");
+        if (j.contains("skills"))
+            r.skills = j.at("skills");
+        if (j.contains("messageBreakdown"))
+            r.messageBreakdown = j.at("messageBreakdown");
+        if (j.contains("apiUsage"))
+            r.apiUsage = j.at("apiUsage");
         return r;
     }
 };
@@ -1645,7 +1668,8 @@ constexpr const char* Batched = "batched";
 constexpr const char* Eager = "eager";
 } // namespace SessionStoreFlushMode
 
-// Forward declaration for ClaudeOptions::session_store (interface in claude/sessions/session_store.hpp)
+// Forward declaration for ClaudeOptions::session_store (interface in
+// claude/sessions/session_store.hpp)
 class SessionStore;
 
 // Configuration options
@@ -1730,11 +1754,13 @@ struct ClaudeOptions
     std::vector<std::string> setting_sources; // Setting sources
     bool continue_conversation = false;       // Continue previous conversation
     bool fork_session = false;                // Fork the session
-    std::optional<int> max_thinking_tokens;          // v0.1.6: limit thinking tokens (deprecated, use thinking)
-    std::optional<ThinkingConfig> thinking;            // v0.1.35: ThinkingConfig (takes precedence over max_thinking_tokens)
-    std::optional<std::string> effort;                 // v0.1.35: Effort level ("low", "medium", "high", "max")
-    std::optional<json> output_format;        // v0.1.8: Structured output format (JSON schema)
-    bool enable_file_checkpointing = false;   // v0.1.15: enable file checkpointing/rewind_files
+    std::optional<int>
+        max_thinking_tokens; // v0.1.6: limit thinking tokens (deprecated, use thinking)
+    std::optional<ThinkingConfig>
+        thinking; // v0.1.35: ThinkingConfig (takes precedence over max_thinking_tokens)
+    std::optional<std::string> effort; // v0.1.35: Effort level ("low", "medium", "high", "max")
+    std::optional<json> output_format; // v0.1.8: Structured output format (JSON schema)
+    bool enable_file_checkpointing = false; // v0.1.15: enable file checkpointing/rewind_files
 
     // Control protocol hooks and callbacks
     /// Hook configurations organized by event type

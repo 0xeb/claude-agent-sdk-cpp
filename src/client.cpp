@@ -876,8 +876,8 @@ ContextUsageResponse ClaudeClient::get_context_usage()
 
     auto write_func = [this](const std::string& data) { impl_->transport_->write(data); };
     json request_data = json::object();
-    json response = impl_->control_protocol_->send_request(write_func, "get_context_usage",
-                                                            request_data);
+    json response =
+        impl_->control_protocol_->send_request(write_func, "get_context_usage", request_data);
     return ContextUsageResponse::from_json(response);
 }
 

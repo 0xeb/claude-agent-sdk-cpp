@@ -1,6 +1,5 @@
-#include <claude/sessions/transcript_mirror_batcher.hpp>
-
 #include <chrono>
+#include <claude/sessions/transcript_mirror_batcher.hpp>
 #include <map>
 #include <stdexcept>
 #include <thread>
@@ -16,24 +15,22 @@ const std::chrono::milliseconds backoff_for(int attempt)
     // Match Python's MIRROR_APPEND_BACKOFF_S = (0.2, 0.8).
     switch (attempt)
     {
-    case 1: return std::chrono::milliseconds(200);
-    case 2: return std::chrono::milliseconds(800);
-    default: return std::chrono::milliseconds(0);
+    case 1:
+        return std::chrono::milliseconds(200);
+    case 2:
+        return std::chrono::milliseconds(800);
+    default:
+        return std::chrono::milliseconds(0);
     }
 }
 } // namespace
 
-TranscriptMirrorBatcher::TranscriptMirrorBatcher(
-    std::shared_ptr<SessionStore> store,
-    FilePathToKey resolver,
-    OnError on_error,
-    std::size_t max_pending_entries,
-    std::size_t max_pending_bytes)
-    : store_(std::move(store)),
-      resolver_(std::move(resolver)),
-      on_error_(std::move(on_error)),
-      max_entries_(max_pending_entries),
-      max_bytes_(max_pending_bytes)
+TranscriptMirrorBatcher::TranscriptMirrorBatcher(std::shared_ptr<SessionStore> store,
+                                                 FilePathToKey resolver, OnError on_error,
+                                                 std::size_t max_pending_entries,
+                                                 std::size_t max_pending_bytes)
+    : store_(std::move(store)), resolver_(std::move(resolver)), on_error_(std::move(on_error)),
+      max_entries_(max_pending_entries), max_bytes_(max_pending_bytes)
 {
     if (!store_)
         throw std::invalid_argument("TranscriptMirrorBatcher: store must be non-null");

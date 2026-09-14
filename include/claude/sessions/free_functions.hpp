@@ -20,19 +20,17 @@ namespace claude::sessions
 /// list_session_summaries nor list_sessions.
 ///
 /// Python: sessions.py:list_sessions_from_store (line 1571).
-std::vector<SDKSessionInfo>
-list_sessions_from_store(SessionStore& store,
-                         const std::string& directory = "",
-                         std::optional<int> limit = std::nullopt,
-                         int offset = 0);
+std::vector<SDKSessionInfo> list_sessions_from_store(SessionStore& store,
+                                                     const std::string& directory = "",
+                                                     std::optional<int> limit = std::nullopt,
+                                                     int offset = 0);
 
 /// Read metadata for a single session from a SessionStore.
 ///
 /// Python: sessions.py:get_session_info_from_store (line 1728).
-std::optional<SDKSessionInfo>
-get_session_info_from_store(SessionStore& store,
-                            const std::string& session_id,
-                            const std::string& directory = "");
+std::optional<SDKSessionInfo> get_session_info_from_store(SessionStore& store,
+                                                          const std::string& session_id,
+                                                          const std::string& directory = "");
 
 /// Read a session's conversation messages from a SessionStore.
 ///
@@ -41,33 +39,28 @@ get_session_info_from_store(SessionStore& store,
 /// session_id or empty session.
 ///
 /// Python: sessions.py:get_session_messages_from_store (line 1758).
-std::vector<SessionMessage>
-get_session_messages_from_store(SessionStore& store,
-                                const std::string& session_id,
-                                const std::string& directory = "",
-                                std::optional<int> limit = std::nullopt,
-                                int offset = 0);
+std::vector<SessionMessage> get_session_messages_from_store(SessionStore& store,
+                                                            const std::string& session_id,
+                                                            const std::string& directory = "",
+                                                            std::optional<int> limit = std::nullopt,
+                                                            int offset = 0);
 
 /// List subagent IDs for a session.
 ///
 /// Throws std::invalid_argument if the store does not implement list_subkeys.
 ///
 /// Python: sessions.py:list_subagents_from_store (line 1795).
-std::vector<std::string>
-list_subagents_from_store(SessionStore& store,
-                          const std::string& session_id,
-                          const std::string& directory = "");
+std::vector<std::string> list_subagents_from_store(SessionStore& store,
+                                                   const std::string& session_id,
+                                                   const std::string& directory = "");
 
 /// Read a subagent's conversation messages from a SessionStore.
 ///
 /// Python: sessions.py:get_subagent_messages_from_store (line 1844).
 std::vector<SessionMessage>
-get_subagent_messages_from_store(SessionStore& store,
-                                 const std::string& session_id,
-                                 const std::string& agent_id,
-                                 const std::string& directory = "",
-                                 std::optional<int> limit = std::nullopt,
-                                 int offset = 0);
+get_subagent_messages_from_store(SessionStore& store, const std::string& session_id,
+                                 const std::string& agent_id, const std::string& directory = "",
+                                 std::optional<int> limit = std::nullopt, int offset = 0);
 
 } // namespace claude::sessions
 

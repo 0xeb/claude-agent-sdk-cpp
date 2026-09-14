@@ -1,8 +1,7 @@
-#include <claude/sessions/in_memory_session_store.hpp>
-#include <claude/sessions/session_summary.hpp>
-
 #include <algorithm>
 #include <chrono>
+#include <claude/sessions/in_memory_session_store.hpp>
+#include <claude/sessions/session_summary.hpp>
 
 namespace claude::sessions
 {
@@ -62,8 +61,7 @@ void InMemorySessionStore::append(const SessionKey& key,
     mtimes_[k] = t;
 }
 
-std::optional<std::vector<SessionStoreEntry>>
-InMemorySessionStore::load(const SessionKey& key)
+std::optional<std::vector<SessionStoreEntry>> InMemorySessionStore::load(const SessionKey& key)
 {
     std::lock_guard<std::mutex> lk(mu_);
     auto it = store_.find(session_key_to_string(key));
@@ -80,8 +78,7 @@ InMemorySessionStore::list_sessions(const std::string& project_key)
     std::string prefix = project_key + "/";
     for (const auto& kv : store_)
     {
-        if (kv.first.size() <= prefix.size() ||
-            kv.first.compare(0, prefix.size(), prefix) != 0)
+        if (kv.first.size() <= prefix.size() || kv.first.compare(0, prefix.size(), prefix) != 0)
             continue;
         std::string rest = kv.first.substr(prefix.size());
         // main transcripts have no second '/'
@@ -102,10 +99,8 @@ InMemorySessionStore::list_session_summaries(const std::string& project_key)
     std::lock_guard<std::mutex> lk(mu_);
     std::vector<SessionSummaryEntry> out;
     for (const auto& kv : summaries_)
-    {
         if (kv.first.first == project_key)
             out.push_back(kv.second);
-    }
     return out;
 }
 
@@ -134,18 +129,14 @@ void InMemorySessionStore::delete_session(const SessionKey& key)
     }
 }
 
-std::vector<std::string>
-InMemorySessionStore::list_subkeys(const SessionListSubkeysKey& key)
+std::vector<std::string> InMemorySessionStore::list_subkeys(const SessionListSubkeysKey& key)
 {
     std::lock_guard<std::mutex> lk(mu_);
     std::string prefix = key.project_key + "/" + key.session_id + "/";
     std::vector<std::string> out;
     for (const auto& kv : store_)
-    {
-        if (kv.first.size() > prefix.size() &&
-            kv.first.compare(0, prefix.size(), prefix) == 0)
+        if (kv.first.size() > prefix.size() && kv.first.compare(0, prefix.size(), prefix) == 0)
             out.push_back(kv.first.substr(prefix.size()));
-    }
     return out;
 }
 
@@ -156,8 +147,7 @@ size_t InMemorySessionStore::size() const
     for (const auto& kv : store_)
     {
         auto pos = kv.first.find('/');
-        if (pos != std::string::npos &&
-            kv.first.find('/', pos + 1) == std::string::npos)
+        if (pos != std::string::npos && kv.first.find('/', pos + 1) == std::string::npos)
             ++count;
     }
     return count;

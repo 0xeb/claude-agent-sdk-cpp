@@ -365,12 +365,9 @@ TEST(TypesTest, HookEventAllValues)
 
 TEST(TypesTest, PreToolUseHookInputParsing)
 {
-    json payload = {{"session_id", "sess-1"},
-                    {"transcript_path", "/tmp/t.jsonl"},
-                    {"cwd", "/work"},
-                    {"hook_event_name", HookEvent::PreToolUse},
-                    {"tool_name", "Write"},
-                    {"tool_input", json{{"path", "test.txt"}}},
+    json payload = {{"session_id", "sess-1"}, {"transcript_path", "/tmp/t.jsonl"},
+                    {"cwd", "/work"},         {"hook_event_name", HookEvent::PreToolUse},
+                    {"tool_name", "Write"},   {"tool_input", json{{"path", "test.txt"}}},
                     {"tool_use_id", "tu_001"}};
 
     auto parsed = PreToolUseHookInput::from_json(payload);
@@ -419,12 +416,9 @@ TEST(TypesTest, NotificationHookInputParsing)
 
 TEST(TypesTest, SubagentStartHookInputParsing)
 {
-    json payload = {{"session_id", "sess-4"},
-                    {"transcript_path", "/tmp/t.jsonl"},
-                    {"cwd", "/work"},
-                    {"hook_event_name", HookEvent::SubagentStart},
-                    {"agent_id", "agent-123"},
-                    {"agent_type", "plan"}};
+    json payload = {{"session_id", "sess-4"},  {"transcript_path", "/tmp/t.jsonl"},
+                    {"cwd", "/work"},          {"hook_event_name", HookEvent::SubagentStart},
+                    {"agent_id", "agent-123"}, {"agent_type", "plan"}};
 
     auto parsed = SubagentStartHookInput::from_json(payload);
     EXPECT_EQ(parsed.hook_event_name, HookEvent::SubagentStart);
