@@ -537,7 +537,6 @@ opts.allowed_tools = {
 - **API Reference:** `api-reference.md` - Full C++ SDK API documentation
 - **Getting Started:** `getting-started.md` - Quick start guide
 - **Examples:** `../examples/tool_permissions.cpp` - Tool control examples
-- **Knowledge Base:** `../../kb/ccsdk/tools-and-interception.md` - Deep dive into tool system
 
 ---
 

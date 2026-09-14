@@ -2,6 +2,7 @@
 
 #include <claude/errors.hpp>
 #include <claude/protocol/control.hpp>
+#include <iostream>
 #include <sstream>
 
 namespace claude
@@ -47,10 +48,16 @@ Message MessageParser::parse_message(const std::string& json_str)
         {
             return parse_control_response(j);
         }
+        else if (type == "rate_limit_event")
+        {
+            /// Python parity: message_parser.py 'rate_limit_event' branch (commit 2d5c3cb).
+            return parse_rate_limit_event(j);
+        }
         else
         {
             // Use MessageParseError for unknown message types - this is a parsing issue, not JSON
-            // decoding
+            // decoding. add_data() catches and skips these for forward compatibility
+            // (Python parity: commit 146e3d6 — skip unknown types instead of crashing).
             throw MessageParseError("Unknown message type: " + type, j);
         }
     }
@@ -80,9 +87,29 @@ std::vector<Message> MessageParser::add_data(const std::string& data)
         if (line->empty())
             continue;
 
+        // Python parity: subprocess_cli.py — skip non-JSON lines (e.g. [SandboxDebug])
+        // when not mid-parse (commit c290bbf). Only checks if line starts with '{'.
+        std::string trimmed = *line;
+        size_t start = trimmed.find_first_not_of(" \t\r");
+        if (start == std::string::npos)
+            continue;
+        if (trimmed[start] != '{')
+        {
+            // Non-JSON line (warning, debug output from CLI) — skip silently
+            continue;
+        }
+
         try
         {
             messages.push_back(parse_message(*line));
+        }
+        catch (const MessageParseError&)
+        {
+            // Python parity (commit 146e3d6): unknown message types are skipped
+            // gracefully so newer CLI versions don't crash older SDK versions.
+            // Also skips control_cancel_request and transcript_mirror that this
+            // C++ port does not yet implement as first-class messages.
+            continue;
         }
         catch (const JSONDecodeError&)
         {
@@ -148,6 +175,23 @@ ContentBlock MessageParser::parse_content_block(const claude::json& j)
             block.content = nullptr; // Explicit null if no content
         return block;
     }
+    else if (type == "server_tool_use")
+    {
+        /// Python parity (commit 6ab97b4): server-side tool use block.
+        ServerToolUseBlock block;
+        block.id = j.at("id").get<std::string>();
+        block.name = j.at("name").get<std::string>();
+        block.input = j.at("input");
+        return block;
+    }
+    else if (type == "advisor_tool_result")
+    {
+        /// Python parity (commit 6ab97b4): server-side advisor tool result.
+        ServerToolResultBlock block;
+        block.tool_use_id = j.at("tool_use_id").get<std::string>();
+        block.content = j.at("content");
+        return block;
+    }
     else
     {
         // Use MessageParseError for unknown content block types
@@ -173,6 +217,25 @@ AssistantMessage MessageParser::parse_assistant_message(const claude::json& j)
     // Extract model field (present in assistant messages)
     if (message.contains("model") && message["model"].is_string())
         msg.model = message["model"].get<std::string>();
+
+    /// Per-turn usage preservation (Python commit fc82420).
+    if (message.contains("usage") && !message["usage"].is_null())
+        msg.usage = message["usage"];
+
+    /// Message ID (Python commit 24b9b68).
+    if (message.contains("id") && message["id"].is_string())
+        msg.message_id = message["id"].get<std::string>();
+
+    if (message.contains("stop_reason") && message["stop_reason"].is_string())
+        msg.stop_reason = message["stop_reason"].get<std::string>();
+
+    /// Top-level identifiers (Python parity).
+    if (j.contains("session_id") && j["session_id"].is_string())
+        msg.session_id = j["session_id"].get<std::string>();
+    if (j.contains("uuid") && j["uuid"].is_string())
+        msg.uuid = j["uuid"].get<std::string>();
+    if (j.contains("parent_tool_use_id") && j["parent_tool_use_id"].is_string())
+        msg.parent_tool_use_id = j["parent_tool_use_id"].get<std::string>();
 
     // Extract error field if present (from outer object, not inner message)
     if (j.contains("error") && j["error"].is_string())
@@ -268,36 +331,166 @@ ResultMessage MessageParser::parse_result_message(const claude::json& j)
     if (j.contains("subtype") && j["subtype"].is_string())
         msg.subtype = j["subtype"].get<std::string>();
 
+    /// Stop reason (Python commit 7219299).
+    if (j.contains("stop_reason") && j["stop_reason"].is_string())
+        msg.stop_reason = j["stop_reason"].get<std::string>();
+
+    /// Deferred tool use (Python commit f5a1b67).
+    if (j.contains("deferred_tool_use") && j["deferred_tool_use"].is_object())
+        msg.deferred_tool_use = DeferredToolUse::from_json(j["deferred_tool_use"]);
+
+    /// Errors list (Python commit f9fc8e0).
+    if (j.contains("errors") && j["errors"].is_array())
+        msg.errors = j["errors"].get<std::vector<std::string>>();
+
+    /// API error HTTP status (Python commit b80d244).
+    if (j.contains("api_error_status") && j["api_error_status"].is_number_integer())
+        msg.api_error_status = j["api_error_status"].get<int>();
+
+    /// Result UUID (Python commit 24b9b68).
+    if (j.contains("uuid") && j["uuid"].is_string())
+        msg.uuid = j["uuid"].get<std::string>();
+
     return msg;
 }
 
 SystemMessage MessageParser::parse_system_message(const claude::json& j)
 {
-    SystemMessage msg;
-    msg.raw_json = j; // Store original JSON
+    std::string subtype;
+    if (j.contains("subtype") && j["subtype"].is_string())
+        subtype = j["subtype"].get<std::string>();
 
-    // Content is optional - system messages with subtype="init" don't have content
-    if (j.contains("content"))
+    /// Python parity (commit 9af27d7): task_* system message subtypes carry
+    /// structured fields. We use the C++ subclass (TaskStartedMessage etc.)
+    /// and slice into a SystemMessage when returning (since Message variant
+    /// only holds SystemMessage). The raw_json retains everything for
+    /// callers that need the structured fields.
+    auto fill_base = [&](SystemMessage& msg)
     {
-        if (j["content"].is_string())
+        msg.subtype = subtype;
+        if (j.contains("content"))
         {
-            msg.content = j["content"].get<std::string>();
+            if (j["content"].is_string())
+                msg.content = j["content"].get<std::string>();
+            else
+                msg.content = j["content"].dump();
         }
         else
         {
-            // If content is not a string, serialize it as JSON
-            msg.content = j["content"].dump();
+            msg.content = "";
         }
-    }
-    else
+        msg.raw_json = j;
+    };
+
+    if (subtype == "task_started")
     {
-        // No content field - use empty string or serialize the whole message
-        msg.content = "";
+        TaskStartedMessage tm;
+        fill_base(tm);
+        tm.task_id = j.value("task_id", "");
+        tm.description = j.value("description", "");
+        tm.uuid = j.value("uuid", "");
+        tm.session_id = j.value("session_id", "");
+        if (j.contains("tool_use_id") && j["tool_use_id"].is_string())
+            tm.tool_use_id = j["tool_use_id"].get<std::string>();
+        if (j.contains("task_type") && j["task_type"].is_string())
+            tm.task_type = j["task_type"].get<std::string>();
+        return tm; // slices to SystemMessage in the variant; raw_json preserves fields
     }
-    // Set subtype if present
-    if (j.contains("subtype") && j["subtype"].is_string())
-        msg.subtype = j["subtype"].get<std::string>();
+    if (subtype == "task_progress")
+    {
+        TaskProgressMessage tm;
+        fill_base(tm);
+        tm.task_id = j.value("task_id", "");
+        tm.description = j.value("description", "");
+        if (j.contains("usage") && j["usage"].is_object())
+            tm.usage = TaskUsage::from_json(j["usage"]);
+        tm.uuid = j.value("uuid", "");
+        tm.session_id = j.value("session_id", "");
+        if (j.contains("tool_use_id") && j["tool_use_id"].is_string())
+            tm.tool_use_id = j["tool_use_id"].get<std::string>();
+        if (j.contains("last_tool_name") && j["last_tool_name"].is_string())
+            tm.last_tool_name = j["last_tool_name"].get<std::string>();
+        return tm;
+    }
+    if (subtype == "task_notification")
+    {
+        TaskNotificationMessage tm;
+        fill_base(tm);
+        tm.task_id = j.value("task_id", "");
+        tm.status = j.value("status", "");
+        tm.output_file = j.value("output_file", "");
+        tm.summary = j.value("summary", "");
+        tm.uuid = j.value("uuid", "");
+        tm.session_id = j.value("session_id", "");
+        if (j.contains("tool_use_id") && j["tool_use_id"].is_string())
+            tm.tool_use_id = j["tool_use_id"].get<std::string>();
+        if (j.contains("usage") && j["usage"].is_object())
+            tm.usage = TaskUsage::from_json(j["usage"]);
+        return tm;
+    }
+    if (subtype == "mirror_error")
+    {
+        /// Python parity: SDK-synthesized mirror error (commit 6e3d54f).
+        MirrorErrorMessage mm;
+        fill_base(mm);
+        if (j.contains("key") && j["key"].is_object())
+            mm.key = SessionKey::from_json(j["key"]);
+        mm.error = j.value("error", "");
+        return mm;
+    }
+    if (subtype == "hook_started" || subtype == "hook_response")
+    {
+        /// Python parity: include_hook_events emits these as system messages
+        /// (commit c1182a4).
+        HookEventMessage hm;
+        fill_base(hm);
+        if (j.contains("hook_event") && j["hook_event"].is_string())
+            hm.hook_event_name = j["hook_event"].get<std::string>();
+        else if (j.contains("hook_name") && j["hook_name"].is_string())
+            hm.hook_event_name = j["hook_name"].get<std::string>();
+        else if (j.contains("hook_event_name") && j["hook_event_name"].is_string())
+            hm.hook_event_name = j["hook_event_name"].get<std::string>();
+        if (j.contains("session_id") && j["session_id"].is_string())
+            hm.session_id = j["session_id"].get<std::string>();
+        if (j.contains("uuid") && j["uuid"].is_string())
+            hm.uuid = j["uuid"].get<std::string>();
+        return hm;
+    }
+
+    SystemMessage msg;
+    fill_base(msg);
     return msg;
+}
+
+/// Python parity: parse_message 'rate_limit_event' branch (commit 2d5c3cb).
+RateLimitEvent MessageParser::parse_rate_limit_event(const claude::json& j)
+{
+    RateLimitEvent ev;
+    ev.raw_json = j;
+    if (j.contains("rate_limit_info") && j["rate_limit_info"].is_object())
+    {
+        const auto& info = j["rate_limit_info"];
+        ev.rate_limit_info.status = info.value("status", "");
+        ev.rate_limit_info.raw = info;
+        if (info.contains("resetsAt") && info["resetsAt"].is_number_integer())
+            ev.rate_limit_info.resets_at = info["resetsAt"].get<int64_t>();
+        if (info.contains("rateLimitType") && info["rateLimitType"].is_string())
+            ev.rate_limit_info.rate_limit_type = info["rateLimitType"].get<std::string>();
+        if (info.contains("utilization") && info["utilization"].is_number())
+            ev.rate_limit_info.utilization = info["utilization"].get<double>();
+        if (info.contains("overageStatus") && info["overageStatus"].is_string())
+            ev.rate_limit_info.overage_status = info["overageStatus"].get<std::string>();
+        if (info.contains("overageResetsAt") && info["overageResetsAt"].is_number_integer())
+            ev.rate_limit_info.overage_resets_at = info["overageResetsAt"].get<int64_t>();
+        if (info.contains("overageDisabledReason") && info["overageDisabledReason"].is_string())
+            ev.rate_limit_info.overage_disabled_reason =
+                info["overageDisabledReason"].get<std::string>();
+    }
+    if (j.contains("uuid") && j["uuid"].is_string())
+        ev.uuid = j["uuid"].get<std::string>();
+    if (j.contains("session_id") && j["session_id"].is_string())
+        ev.session_id = j["session_id"].get<std::string>();
+    return ev;
 }
 
 StreamEvent MessageParser::parse_stream_event(const claude::json& j)

@@ -3,6 +3,7 @@
 #include <claude/query.hpp>
 #include <claude/transport.hpp>
 #include <nlohmann/json.hpp>
+#include <sstream>
 #include <thread>
 
 namespace claude
@@ -109,28 +110,65 @@ QueryResult query(const std::string& prompt, const ClaudeOptions& options)
 
         // Collect all messages until transport closes
         std::vector<Message> all_messages;
+        bool saw_error_result = false;
+        std::string error_result_text;
 
-        while (transport->has_messages())
+        try
         {
-            auto messages = transport->read_messages();
-            if (messages.empty())
+            while (transport->has_messages())
             {
-                // No messages available, wait a bit
-                std::this_thread::sleep_for(std::chrono::milliseconds(10));
-                continue;
-            }
-
-            for (auto& msg : messages)
-            {
-                all_messages.push_back(std::move(msg));
-
-                // Check if we got the result message (end of response)
-                if (is_result_message(all_messages.back()))
+                auto messages = transport->read_messages();
+                if (messages.empty())
                 {
-                    // We got the final result, can stop reading
-                    goto done;
+                    // No messages available, wait a bit
+                    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                    continue;
+                }
+
+                for (auto& msg : messages)
+                {
+                    all_messages.push_back(std::move(msg));
+
+                    // Check if we got the result message (end of response)
+                    if (is_result_message(all_messages.back()))
+                    {
+                        const auto& result = std::get<ResultMessage>(all_messages.back());
+                        if (result.is_error())
+                        {
+                            saw_error_result = true;
+                            /// Python parity (commit 9aafd84): pull actionable
+                            /// error text from result message for the wrapping
+                            /// exception (e.g. "rate_limit_error" + status).
+                            std::ostringstream oss;
+                            oss << "Claude CLI returned error result";
+                            if (!result.subtype.empty())
+                                oss << " (subtype=" << result.subtype << ")";
+                            if (result.api_error_status.has_value())
+                                oss << " [HTTP " << *result.api_error_status << "]";
+                            if (result.errors.has_value() && !result.errors->empty())
+                            {
+                                oss << ": ";
+                                for (size_t i = 0; i < result.errors->size(); ++i)
+                                {
+                                    if (i > 0) oss << "; ";
+                                    oss << (*result.errors)[i];
+                                }
+                            }
+                            error_result_text = oss.str();
+                        }
+                        // We got the final result, can stop reading
+                        goto done;
+                    }
                 }
             }
+        }
+        catch (const ProcessError&)
+        {
+            /// Python parity (commit 9aafd84): suppress redundant ProcessError
+            /// after we've already received an error result message — the
+            /// result message contains the actionable error info.
+            if (!saw_error_result)
+                throw;
         }
 
     done:

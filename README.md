@@ -167,9 +167,9 @@ See `include/claude/types.hpp` and `docs/api-reference.md` for full details.
 - **Current version:** 0.1.18 (see `include/claude/version.hpp`).
 - **Status:** Production ready.
 - **Parity:** Designed to match the Python Claude Agent SDK 0.1.18 API, behavior, and ergonomics, including MCP template APIs and control protocol.
-- **Tests:** See `kb/status.md` in the management repo for up-to-date test counts and parity details.
+- **Tests:** Run `ctest --test-dir build -C Release` for current counts; live-CLI tests skip automatically when the Claude CLI is unavailable.
 
-**Canonical rule:** The Python `claude-agent-sdk` is the canonical reference. This C++ port is expected to track its behavior and API (currently aligned with Python v0.1.18).
+**Canonical rule:** The Python `claude-agent-sdk` is the canonical reference. This C++ port is expected to track its behavior and API (currently aligned with Python v0.2.82). See `CHANGELOG.md` for the parity-cycle log.
 
 Upstream sync checkpoints: `docs/upstream-sync.md`.
 

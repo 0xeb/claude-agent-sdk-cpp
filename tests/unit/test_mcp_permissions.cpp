@@ -6,7 +6,7 @@ using json = nlohmann::json;
 
 // Refactored per Python SDK parity guidelines: unit tests invoke MCP API
 // directly (no MockTransport + connect()). Permission enforcement tested
-// via E2E tests with real CLI. See kb/sync2/agent-testing.md for rationale.
+// via E2E tests with real CLI.
 
 TEST(McpPermissionsTest, ToolPermissionLogic)
 {

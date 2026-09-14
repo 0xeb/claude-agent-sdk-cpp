@@ -1,6 +1,6 @@
 {
   "name": "claude-sdk",
-  "version": "0.1.0",
+  "version": "0.2.82",
   "description": "C++ SDK for Claude Code CLI",
   "dependencies": [
     {

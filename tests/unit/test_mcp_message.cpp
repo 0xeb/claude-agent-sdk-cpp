@@ -6,7 +6,6 @@ using json = nlohmann::json;
 
 // Refactored per Python SDK parity guidelines: unit tests invoke handlers
 // directly without client lifecycle (no MockTransport + connect()).
-// See kb/sync2/agent-testing.md for rationale.
 
 TEST(McpMessageRoutingTest, HandlerInvocationDirect)
 {

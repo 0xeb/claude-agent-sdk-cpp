@@ -182,3 +182,26 @@ target_link_libraries(filesystem_agents
 )
 
 set_target_properties(filesystem_agents PROPERTIES FOLDER "Examples")
+
+# ---------------------------------------------------------------------------
+# Phase 5 (parity v0.2.82) examples — sessions / hooks / context window
+# ---------------------------------------------------------------------------
+
+add_executable(session_store_usage session_store_usage.cpp)
+target_link_libraries(session_store_usage PRIVATE claude_sdk)
+set_target_properties(session_store_usage PROPERTIES FOLDER "Examples")
+
+add_executable(session_resume session_resume.cpp)
+target_link_libraries(session_resume PRIVATE claude_sdk)
+set_target_properties(session_resume PROPERTIES FOLDER "Examples")
+
+add_executable(hook_events hook_events.cpp)
+target_link_libraries(hook_events PRIVATE claude_sdk)
+set_target_properties(hook_events PROPERTIES FOLDER "Examples")
+
+add_executable(context_usage context_usage.cpp)
+target_link_libraries(context_usage PRIVATE claude_sdk)
+set_target_properties(context_usage PROPERTIES FOLDER "Examples")
+
+# Extensions: non-mirrored / C++-specific examples
+add_subdirectory(extensions)

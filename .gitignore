@@ -1,2 +1,4 @@
 build*/
 Testing/
+!include/claude/testing/
+!src/testing/

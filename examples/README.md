@@ -196,6 +196,4 @@ opts.tool_permission_callback = [](const std::string& tool, const claude::json& 
 
 ## See Also
 
-- **kb/reviewer_user.md** - Latest parity findings, Sync Timeline, and test status
-- **kb/ccsdk/claude-agent-sdk-python-notes.md** - Python SDK reference
 - **cppclient/include/claude/claude.hpp** - Full API documentation

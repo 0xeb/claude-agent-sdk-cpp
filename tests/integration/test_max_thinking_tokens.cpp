@@ -6,7 +6,7 @@
  * This is a regression test for a bug where --max-thinking-tokens was
  * placed AFTER --print -- (which ends option parsing per POSIX).
  *
- * Bug: BUG-1 (kb/bugs/bug-1.md)
+ * Bug: BUG-1
  * Fix: subprocess_cli.cpp - moved max_thinking_tokens before input mode section
  */
 

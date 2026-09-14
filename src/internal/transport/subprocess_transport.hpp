@@ -43,9 +43,12 @@ class SubprocessTransport : public Transport
     long get_pid() const override;
     bool is_running() const override;
 
-  private:
-    // Build CLI command with options
+  public:
+    // Build CLI command with options (public for testability — internal namespace
+    // keeps it from being part of the public ABI).
     std::vector<std::string> build_command() const;
+
+  private:
 
     // Find CLI executable (honors options_.cli_path when provided)
     std::string find_cli() const;

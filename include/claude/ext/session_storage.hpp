@@ -9,8 +9,6 @@
  * - Cross-platform file-based persistence
  *
  * @warning This is a C++ extension - not part of Python SDK parity
- * @see kb/ccsdk/session-management.md
- * @see kb/ccsdk/cpp-extensions-design.md
  */
 
 #pragma once
